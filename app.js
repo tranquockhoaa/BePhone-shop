@@ -19,6 +19,9 @@ const reviewImageRouter = require('./routes/reviewImageRouter');
 const adminRouter = require('./routes/adminRouter');
 const orderRouter = require('./routes/orderRouter');
 const adminOrderRouter = require('./routes/adminOrderRouter');
+const mediaRouter = require('./routes/mediaRouter');
+
+
 
 const cors = require('cors');
 
@@ -43,6 +46,8 @@ app.use('/api/v1/user', userRouter);
 app.use('/api/v1/image', reviewImageRouter);
 app.use('/api/v1/admin/orders', adminOrderRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/media', mediaRouter);
+
 
 app.all('*', (req, res, next) => {
   next(new AppError(`can't find ${req.originalUrl}`));

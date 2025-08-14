@@ -16,6 +16,9 @@ const memoryRouter = require('./routes/memoryRouter');
 const voucherRouter = require('./routes/voucherRouter');
 const userRouter = require('./routes/userRouter');
 const reviewImageRouter = require('./routes/reviewImageRouter');
+const adminRouter = require('./routes/adminRouter');
+const orderRouter = require('./routes/orderRouter');
+const adminOrderRouter = require('./routes/adminOrderRouter');
 
 const cors = require('cors');
 
@@ -24,6 +27,8 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use(express.json());
+
+app.use('/api/v1/order', orderRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/color', colorRouter);
@@ -31,11 +36,13 @@ app.use('/api/v1/productDetails', productDetailRouter);
 app.use('/api/v1/brand', brandRouter);
 app.use('/api/v1/cart', cartRouter);
 app.use('/api/v1/review', reviewRouter);
-app.use('/api/v1/cartDetail', cartDetailRouter);
+app.use('/api/v1/cart-detail', cartDetailRouter);
 app.use('/api/v1/memory', memoryRouter);
 app.use('/api/v1/voucher', voucherRouter);
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/image', reviewImageRouter);
+app.use('/api/v1/admin/orders', adminOrderRouter);
+app.use('/api/v1/admin', adminRouter);
 
 app.all('*', (req, res, next) => {
   next(new AppError(`can't find ${req.originalUrl}`));

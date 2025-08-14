@@ -1,5 +1,5 @@
-const CartDetaiService = require('./../service/cartDetailService');
 const CartDetailService = require('./../service/cartDetailService');
+const CartDetail = require('../models/cartDetail');
 const catchAsync = require('./../utils/catchAsync');
 
 exports.createCartDetail = catchAsync(async (req, res, next) => {
@@ -45,10 +45,31 @@ exports.removeCartDetail = catchAsync(async (req, res, next) => {
   });
 });
 
+
+
 exports.changeQuantity = catchAsync(async (req, res, next) => {
-  const cartDetail = await CartDetaiService.changeQuantity(req.params.id,req.params.changeType);
+  const userId = req.userId; // Lấy userId từ middleware protect
+  const cartDetailId = req.params.id;
+  const changeType = req.params.changeType;
+
+  // Tìm cart detail theo cart_detail_id và user_id
+  const cartDetail = await CartDetail.findOne({
+    where: { cart_detail_id: cartDetailId },
+    include: {
+      model: require('../models/cart'),
+      as: 'cart',
+      where: { user_id: userId }
+    }
+  });
+
+  if (!cartDetail) {
+    return res.status(404).json({ status: 'fail', message: 'Không tìm thấy sản phẩm trong giỏ hàng của bạn' });
+  }
+
+  // Gọi service để tăng/giảm số lượng
+  const updated = await CartDetailService.changeQuantity(cartDetailId, changeType);
   res.status(200).json({
     status: 'success',
-    message: cartDetail,
+    data: updated,
   });
 });

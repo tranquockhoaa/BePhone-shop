@@ -1,6 +1,7 @@
+
 const CartDetail = require('./../models/cartDetail');
 
-class CartDetaiService {
+class CartDetailService {
   static async createCartDetail(data) {
     const newCartDetail = await CartDetail.create({
       ...data,
@@ -46,6 +47,9 @@ class CartDetaiService {
     await cartDetail.save();
     return cartDetail;
   }
+
 }
 
-module.exports = CartDetaiService;
+
+
+module.exports = CartDetailService;

@@ -110,6 +110,8 @@ class ProductService {
 
   const query = `
     SELECT 
+    p.code AS code,
+    pd.product_detail_id as productDetailId,
     p.name AS name, 
     price, 
     quantity, 
@@ -154,10 +156,12 @@ CAST(NULLIF(regexp_replace(m.ram_size, '[^0-9]', '', 'g'), '') AS INTEGER) ASC, 
 
     grouped[key].options.push({
       name: item.name,
+      code: item.code, 
       brandName: item.brand_name,
       color: item.color,
       price: item.price,
-      quantity: item.quantity
+      quantity: item.quantity,
+      productDetailId: item.product_detail_id
     });
   }
 
@@ -178,6 +182,66 @@ CAST(NULLIF(regexp_replace(m.ram_size, '[^0-9]', '', 'g'), '') AS INTEGER) ASC, 
   });
 
   return result;
+}
+
+static async getProductByBrand(queryParams) {
+  const { brandName, _page = 1, _limit = 10, sortPrice } = queryParams;
+  const offset = (_page - 1) * _limit;
+  // Xác định trường sort
+  let orderBy = '"createdAt" DESC';
+  if (sortPrice === 'asc') orderBy = 'price ASC';
+  if (sortPrice === 'desc') orderBy = 'price DESC';
+
+  // Đếm tổng số sản phẩm theo brand
+  const countQuery = `
+    SELECT COUNT(DISTINCT p.product_id) AS total
+    FROM products p
+    JOIN brands b ON p.brand_id = b.brand_id
+    WHERE b.name = '${brandName}'
+  `;
+  const countResult = await sequelize.query(countQuery, { type: QueryTypes.SELECT });
+  const total = countResult[0]?.total || 0;
+
+  // Lấy danh sách sản phẩm phân trang
+  const query = `
+    WITH product_variants AS (
+      SELECT 
+        p.product_id,
+        p.code,
+        p.name,
+        p."createdAt",
+        pd.price,
+        c.name AS color_name,
+        m.storage_size,
+        m.ram_size,
+        pd.quantity,
+        b.name AS brand_name,
+        ROW_NUMBER() OVER (
+          PARTITION BY p.product_id 
+          ORDER BY pd.price ASC
+        ) AS rn
+      FROM products p
+      JOIN brands b ON p.brand_id = b.brand_id
+      JOIN product_details pd ON p.product_id = pd.product_id
+      JOIN memories m ON pd.memory_id = m.memory_id
+      JOIN colors c ON c.color_id = pd.color_id
+      WHERE b.name = '${brandName}'
+    )
+    SELECT *
+    FROM product_variants
+    WHERE rn = 1
+    ORDER BY ${orderBy}
+    LIMIT ${_limit} OFFSET ${offset};
+  `;
+
+  const data = await sequelize.query(query, {
+    type: QueryTypes.SELECT,
+  });
+  return { data, total };
+}
+
+static async searchProduct(queryParams){
+  
 }
 
 }

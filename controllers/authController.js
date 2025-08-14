@@ -68,7 +68,6 @@ exports.signup = catchAsync(async (req, res, next) => {
 
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
-  console.log(email, password);
   if (!email || !password) {
     return res.status(401).json({
       status: 'Fail',
@@ -76,10 +75,7 @@ exports.login = catchAsync(async (req, res, next) => {
     });
   }
 
-  const user = await User.findOne({
-    where: { email },
-  });
-
+  const user = await User.findOne({ where: { email } });
   if (!user) {
     return next(new AppError('Can not find account!', 400));
   }
@@ -88,9 +84,24 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!checkPassword) {
     return next(new AppError('Password is incorrect!'));
   }
-  await createSendToken(user, 200, res);
-});
 
+  // Trả về role để FE điều hướng
+  const token = signToken(user.user_id);
+  const expiredJWT = Number(process.env.JWT_EXPIRES_IN);
+  const key = `${user.user_id}:jwt:${token}`;
+  redisClient.set(key, token, { EX: expiredJWT });
+
+  res.status(200).json({
+    status: 'success',
+    token,
+    user: {
+      id: user.user_id,
+      full_name: user.full_name,
+      email: user.email,
+      role: user.role
+    }
+  });
+});
 exports.protect = catchAsync(async (req, res, next) => {
   console.log('protect running');
   let token;
@@ -236,3 +247,41 @@ exports.logout = catchAsync(async (req, res, next) => {
   });
   
 });
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    // Giả sử user đã được gán vào req.userId ở middleware protect
+    User.findByPk(req.userId).then(user => {
+      if (!user || !roles.includes(user.role)) {
+        return next(new AppError('Bạn không có quyền truy cập chức năng này!', 403));
+      }
+      next();
+    }).catch(err => next(err));
+  };
+};
+
+// controllers/authController.js
+// controllers/authController.js
+exports.registerAdmin = catchAsync(async (req, res, next) => {
+  const { full_name, email, password, phone_number, address } = req.body;
+  const user = await User.create({
+    full_name,
+    email,
+    password,
+    phone_number,
+    address,
+    role: 'admin'
+  });
+  res.status(201).json({ status: 'success', data: user });
+});
+
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    User.findByPk(req.userId).then(user => {
+      if (!user || !roles.includes(user.role)) {
+        return next(new AppError('Bạn không có quyền truy cập chức năng này!', 403));
+      }
+      next();
+    }).catch(err => next(err));
+  };
+};

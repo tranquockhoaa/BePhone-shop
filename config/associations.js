@@ -11,6 +11,8 @@ const Memory = require('../models/memory');
 const Voucher = require('../models/voucher');
 const UserVoucher = require('../models/userVoucher');
 const ReviewImage = require('../models/reviewImage');
+const Order = require ('../models/orders')
+const OrderItem = require ('../models/orderItem')
 
 const defineAssociations = () => {
   Color.hasMany(ProductDetail, { foreignKey: 'color_id' });
@@ -45,6 +47,17 @@ const defineAssociations = () => {
 
   User.belongsToMany(Voucher, { through: UserVoucher });
   Voucher.belongsToMany(User, { through: UserVoucher });
+
+    
+  Order.hasMany(OrderItem, { foreignKey: 'order_id' });
+  OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
+
+  User.hasMany(Order, { foreignKey: 'user_id' });
+  ProductDetail.hasMany(OrderItem, { foreignKey: 'product_detail_id' });
+  OrderItem.belongsTo(ProductDetail, { foreignKey: 'product_detail_id' });
+
 };
+
+
 
 module.exports = defineAssociations;

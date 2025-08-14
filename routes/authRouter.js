@@ -20,5 +20,6 @@ router.patch(
 // );
 router.post('/logout/:type', authController.logout);
 router.post('/logout', authController.logout);
-
+// routes/authRouter.js
+router.post('/register-admin', authController.registerAdmin);
 module.exports = router;

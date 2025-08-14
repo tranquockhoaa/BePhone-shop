@@ -4,9 +4,9 @@ const express = require('express');
 router = express.Router();
 
 router.get('/', cartController.getAllCart);
-router.get('/:id', cartController.getCartById);
 router.post('/', cartController.createCart);
 router.put('/:id', cartController.updateCart);
 router.post('/add', authController.protect, cartController.addToCart);
-
+router.get('/my-cart', authController.protect, cartController.getCartByUserId);
+router.delete('/cart-detail/:cartDetailId', authController.protect, cartController.removeCartDetail);
 module.exports = router;

@@ -3,9 +3,11 @@ const express = require('express');
 
 router = express.Router();
 
-router.get('/', brandController.getBrandByName);
+router.get('/', brandController.getAllBrand);
 router.get('/:id', brandController.getBrandByPk);
 router.post('/', brandController.createBrand);
+router.put('/sort', brandController.sortBrand);
 router.put('/:id', brandController.updateBrand);
+
 
 module.exports = router;

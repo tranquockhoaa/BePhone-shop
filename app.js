@@ -20,6 +20,8 @@ const adminRouter = require('./routes/adminRouter');
 const orderRouter = require('./routes/orderRouter');
 const adminOrderRouter = require('./routes/adminOrderRouter');
 const mediaRouter = require('./routes/mediaRouter');
+const adminProductDetailRouter = require('./routes/adminProductDetailRouter');
+
 
 
 
@@ -35,7 +37,7 @@ app.use('/api/v1/order', orderRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/color', colorRouter);
-app.use('/api/v1/productDetails', productDetailRouter);
+app.use('/api/v1/product-details', productDetailRouter);
 app.use('/api/v1/brand', brandRouter);
 app.use('/api/v1/cart', cartRouter);
 app.use('/api/v1/review', reviewRouter);
@@ -47,6 +49,8 @@ app.use('/api/v1/image', reviewImageRouter);
 app.use('/api/v1/admin/orders', adminOrderRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/media', mediaRouter);
+app.use('/api/v1/admin/product-detail', adminProductDetailRouter);
+
 
 
 app.all('*', (req, res, next) => {

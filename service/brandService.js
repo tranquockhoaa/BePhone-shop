@@ -22,6 +22,8 @@ class BrandService {
     await brand.update({
       name: data.name,
       infomation: data.infomation,
+      icon: data.icon,
+      status: data.status,
     });
     return brand;
   }

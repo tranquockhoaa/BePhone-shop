@@ -29,7 +29,6 @@ const deleteKeyRedis = catchAsync(async (partten) => {
         redisClient.del(e);
       }),
     );
-  console.log('deleteToken success');
 });
 // sesssion token user id
 //
@@ -121,7 +120,6 @@ exports.protect = catchAsync(async (req, res, next) => {
     return redisClient.ttl(keyRedis) > 0;
   };
   if (!keyRedisIsValid) return next(new AppError('Token is not valid'));
-  console.log('key is valid');
   const currentUser = await User.findByPk(decoded.id);
   if (!currentUser) {
     return next(

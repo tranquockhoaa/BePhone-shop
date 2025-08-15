@@ -12,17 +12,195 @@ const catchAsync = require('../utils/catchAsync');
 
 // GET /api/v1/admin/products
 exports.getAllProducts = catchAsync(async (req, res, next) => {
-  const { page = 1, limit = 20, name = "", code ="" } = req.query;
-  const offset = (page - 1) * limit;
-  const { count, rows } = await Product.findAndCountAll({
-    order: [['createdAt', 'DESC']],
-    offset: Number(offset),
-    limit: Number(limit),
-    name: name,
-    code: code,
-  });
-  res.status(200).json({ status: 'success', total: count, products: rows });
+  try {
+    const {
+      name = "",
+      code = "",
+      description = "",
+      brand_id = "",
+      sku = "",
+      status = "",
+      sortBy = "createdAt", 
+      sortOrder = "ASC",
+      page = 1,
+      size = 10,
+    } = req.query;
+
+    const limit = parseInt(size);
+    const offset = (parseInt(page) - 1) * limit;
+
+    const whereClause = {};
+    if (name) whereClause.name = { [Op.iLike]: `%${name}%` };
+    if (code) whereClause.code = { [Op.iLike]: `%${code}%` };
+    if (description) whereClause.description = { [Op.iLike]: `%${description}%` };
+    if (sku) whereClause.sku = { [Op.iLike]: `%${sku}%` };
+    if (status) whereClause.status = status;
+    if (brand_id) whereClause.brand_id = brand_id;
+
+    const products = await Product.findAndCountAll({
+       include: [
+        {
+          model: Brand,
+          as: "brand",
+        },
+        
+      ],
+      where: whereClause,
+      limit,
+      offset,
+      order: [[sortBy, sortOrder]],
+    });
+
+    return res.status(200).json({
+      status: "success",
+      totalItems: products.count,
+      totalPages: Math.ceil(products.count / limit),
+      currentPage: parseInt(page),
+      data: products.rows,
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
 });
+
+exports.getProductById = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+  const product = await Product.findByPk(id, {
+    include: [
+      {
+        model: Brand,
+        as: "brand",
+      },
+    ],
+  });
+
+  if (!product) {
+    return res.status(404).json({
+      status: "error",
+      message: "Product not found",
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    data: product,
+  });
+});
+
+
+
+exports.createProduct = catchAsync(async (req, res, next) => {
+  try {
+    const { name, code, description, brand_id, sku } = req.body;
+
+    if (!name || !code || !description || !brand_id || !sku) {
+      return res.status(400).json({
+        status: "Error",
+        message: "Thiếu các trường bắt buộc",
+      });
+    }
+
+    const checkProduct = await Product.findOne({ where: { sku } });
+
+    if (checkProduct) {
+      return res.status(400).json({
+        status: "Error",
+        message: "Sản phẩm đã tồn tại với SKU này",
+      });
+    }
+
+    const newProduct = await Product.create({
+      name,
+      code,
+      description,
+      brand_id,
+      sku,
+      status: "ACTIVE"
+    });
+
+    res.status(201).json({
+      status: "Success",
+      data: newProduct,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "Error",
+      message: error.message,
+    });
+  }
+});
+
+exports.updateProduct = catchAsync(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+  const { name, code, description, brand_id, sku, status } = req.body;
+  const product = await Product.findByPk(id);
+  if (!product) {
+    return res.status(404).json({
+      status: "Error",
+      message: "Sản phẩm không tồn tại",
+    });
+  }
+  product.name = name;
+  product.code = code;
+  product.description = description;
+  product.brand_id = brand_id;
+  product.sku = sku;
+  product.status = status || product.status;
+  await product.save();
+  res.status(200).json({
+    status: "Success",
+    data: product,
+  });
+
+  } catch(error) {
+    return res.status(500).json({
+      status: "Error",
+      message: error.message,
+    });
+  } })
+
+
+exports.deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({
+        status: "error",
+        message: "Không tìm thấy sản phẩm chi tiết với ID này",
+      });
+    }
+
+    await product.update({ status: "INACTIVE" });
+
+    return res.status(204).json({
+      status: "success",
+      message: "Sản phẩm  đã được xóa thành công",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
 
 // GET /api/v1/admin/orders
 exports.getAllOrders = catchAsync(async (req, res, next) => {
@@ -171,7 +349,6 @@ exports.getOverview = async (req, res, next) => {
 
 exports.getAllProductDetails = catchAsync(async (req, res, next) => {
 
-
   const details = await ProductDetail.findAll({
     attributes: [
       'product_detail_id',
@@ -234,21 +411,6 @@ exports.getAllProductsWithTotalQuantity = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'success', total: products.length, products });
 });
 
-exports.deleteProduct = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-  const product = await Product.findByPk(id);
-  if (!product) {
-    return res.status(404).json({ status: 'error', message: 'Product not found' });
-  }
-
-  // Xóa tất cả product_details liên quan
-  await ProductDetail.destroy({ where: { product_id: id } });
-
-  // Xóa sản phẩm
-  await product.destroy();
-
-  res.status(204).json({ status: 'success', data: null });
-});
 
 exports.updateProductName = catchAsync(async (req, res, next) => {
   const { id } = req.params;
@@ -261,15 +423,6 @@ exports.updateProductName = catchAsync(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: product });
 });
 
-exports.deleteProductDetail = catchAsync(async (req, res, next) => {
-  const { id } = req.params;
-  const productDetail = await ProductDetail.findByPk(id);
-  if (!productDetail) {
-    return res.status(404).json({ status: 'error', message: 'Product detail not found' });
-  }
-  await productDetail.destroy();
-  res.status(204).json({ status: 'success', data: null });
-});
 
 exports.updateProductDetail = catchAsync(async (req, res, next) => {
   const { id } = req.params;

@@ -16,7 +16,23 @@ const Brand = sequelize.define(
     infomation: {
       type: DataTypes.TEXT,
     },
+    sortOrder: {
+      type: DataTypes.INTEGER,
+    },
+    icon: {
+      type: DataTypes.STRING,
+    },
+    status : {
+      type:DataTypes.ENUM('ACTIVE', 'INACTIVE'),
+    }
   },
+
   { timestamps: true },
 );
+
+Brand.beforeCreate(async (brand) => {
+  const maxSort = await Brand.max('sortOrder');
+  brand.sortOrder = (maxSort || 0) + 1;
+});
+
 module.exports = Brand;

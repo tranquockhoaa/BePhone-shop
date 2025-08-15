@@ -12,12 +12,14 @@ const catchAsync = require('../utils/catchAsync');
 
 // GET /api/v1/admin/products
 exports.getAllProducts = catchAsync(async (req, res, next) => {
-  const { page = 1, limit = 20 } = req.query;
+  const { page = 1, limit = 20, name = "", code ="" } = req.query;
   const offset = (page - 1) * limit;
   const { count, rows } = await Product.findAndCountAll({
     order: [['createdAt', 'DESC']],
     offset: Number(offset),
-    limit: Number(limit)
+    limit: Number(limit),
+    name: name,
+    code: code,
   });
   res.status(200).json({ status: 'success', total: count, products: rows });
 });

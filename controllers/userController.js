@@ -24,13 +24,29 @@ exports.getUserByFullName = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getInforByEmail = catchAsync(async (req, res, next) => {
-  const infor = await UserService.getInforByEmail(req.params.email);
-  res.status(200).json({
-    status: "success",
-    data: infor,
-  });
-});
+
+exports.getProfile = async (req, res) => {
+  try {
+    const user = req.user; 
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        phone_number: user.phone_number,
+        avatar: user.avatar,
+        address: user.address,
+        gender: user.gender,
+        birth_date: user.birth_date,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi server." });
+  }
+};
 
 exports.updateProfile = async (req, res) => {
   try {

@@ -3,5 +3,12 @@ const express = require('express');
 router = express.Router();
 
 router.get('/:email', userController.getInforByEmail);
+router.patch('/:id', userController.updateProfile);
+router.patch('/avatar/:id', userController.updateAvatar);
+router.post('/forgot-password', userController.forgotPassword);
+router.post("/reset-password", userController.resetPassword);
+
+
+
 
 module.exports = router;

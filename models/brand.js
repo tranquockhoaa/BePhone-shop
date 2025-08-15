@@ -24,6 +24,7 @@ const Brand = sequelize.define(
     },
     status : {
       type:DataTypes.ENUM('ACTIVE', 'INACTIVE'),
+      defaultValue: 'ACTIVE',
     }
   },
 

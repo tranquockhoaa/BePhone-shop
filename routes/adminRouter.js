@@ -1,6 +1,8 @@
 const express = require("express");
 const adminController = require("../controllers/adminController");
 const authController = require("../controllers/authController");
+const brandController = require('../controllers/brandController');
+
 const router = express.Router();
 
 // Bảo vệ tất cả route admin
@@ -12,6 +14,13 @@ router.get("/products/:id", adminController.getProductById);
 router.post("/products/create", adminController.createProduct);
 router.put("/products/:id", adminController.updateProduct);
 router.delete("/products/:id", adminController.deleteProduct);
+
+
+router.get('/brand', brandController.getAllBrand);
+router.get('/brand/:id', brandController.getBrandByPk);
+router.post('/brand', brandController.createBrand);
+router.put('/brand/sort', brandController.sortBrand);
+router.put('/brand/:id', brandController.updateBrand);
 
 
 // Danh sách đơn hàng

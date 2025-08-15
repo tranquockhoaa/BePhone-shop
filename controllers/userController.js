@@ -27,31 +27,12 @@ exports.getUserByFullName = catchAsync(async (req, res, next) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Không có token hoặc token không hợp lệ." });
-    }
-
-    const token = authHeader.split(" ")[1];
-    const secretKey = process.env.JWT_SECRET; 
-
-    let decoded;
-    try {
-      decoded = jwt.verify(token, secretKey);
-    } catch (err) {
-      return res.status(401).json({ message: "Token không hợp lệ hoặc đã hết hạn." });
-    }
-
-    const user = await User.findByPk(decoded.id); 
-    if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng." });
-    }
+    const user = req.user; 
 
     res.status(200).json({
       status: "success",
       data: {
-        id: user.id,
+        id: user.user_id,
         email: user.email,
         full_name: user.full_name,
         phone_number: user.phone_number,
@@ -65,7 +46,7 @@ exports.getProfile = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Lỗi server." });
   }
-}
+};
 
 exports.updateProfile = async (req, res) => {
   try {

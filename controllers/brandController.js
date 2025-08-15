@@ -67,3 +67,23 @@ exports.sortBrand = async (req, res) => {
     res.status(500).json({ error: "Lỗi khi cập nhật thứ tự" });
   }
 };
+
+
+exports.getAllBrandForUser = async (req, res) => {
+  const order = req.query.order?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+  try {
+    const brands = await Brand.findAll({
+      order: [["sortOrder", order]],
+      where: { status: "ACTIVE" }, 
+    });
+
+    if (!brands || brands.length === 0) {
+      return res.status(404).json({ error: "Không tìm thấy brand nào" });
+    }
+
+    return res.status(200).json(brands);
+  } catch (err) {
+    res.status(500).json({ error: "Lỗi khi lấy danh sách brand" });
+  }
+};

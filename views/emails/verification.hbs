@@ -1,3 +1,46 @@
-<h2>Mã xác nhận lấy lại mật khẩu</h2>
-<p>Mã của bạn là: <strong>{{code}}</strong></p>
-<p>Có hiệu lực trong 5 phút.</p>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: whitesmoke;
+      }
+      h1 {
+        font-weight: 500;
+      }
+    </style>
+    <title>Document</title>
+  </head>
+  <body>
+    <h1 style="text-align: center; font-weight: 500; margin-bottom: 80px">
+      LẤY LẠI MẬT KHẨU
+    </h1>
+    <div
+      style="
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        width: 456px;
+        background-color: white;
+        margin: auto;
+        margin-bottom: 60px;
+      "
+    >
+      <p style="font-size: 20px; color: #666666; text-align: center">
+        Đây là mã để lấy lại mật khẩu của bạn:<br />
+        <br />
+      </p>
+      <p style="font-size: 37px; color: black; font-weight: 900; margin: 0">
+        {{code}}
+      </p>
+      <p style="font-size: 18px; color: #666666">Mã này sẽ sớm hết hạn</p>
+    </div>
+    <p style="text-align: center; width: 456px; margin: auto; font-size: 18px">
+      Nếu bạn không phải là người gửi yêu cầu này, hãy đổi mật khẩu tài khoản
+      ngay lập tức để tránh việc bị truy cập trái phép.
+    </p>
+  </body>
+</html>

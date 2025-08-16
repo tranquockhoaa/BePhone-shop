@@ -1,12 +1,11 @@
 const cartController = require('../controllers/cartController');
-const authController = require('../controllers/authController');
 const express = require('express');
+const { protect } = require("../middlewares/auth/profile");
+
 router = express.Router();
 
-router.get('/', cartController.getAllCart);
-router.post('/', cartController.createCart);
-router.put('/:id', cartController.updateCart);
-router.post('/add', authController.protect, cartController.addToCart);
-router.get('/my-cart', authController.protect, cartController.getCartByUserId);
-router.delete('/cart-detail/:cartDetailId', authController.protect, cartController.removeCartDetail);
+router.get('/', protect, cartController.getCartByUserId);
+// router.get('/:id',protect, cartController.getCartByUserId);
+router.post('/', protect, cartController.createCart);
+
 module.exports = router;

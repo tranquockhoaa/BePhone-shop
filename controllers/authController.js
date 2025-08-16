@@ -11,7 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
+    expiresIn: "7d",
   });
 };
 const sessionIsValid = catchAsync(async (user) => {

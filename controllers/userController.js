@@ -40,6 +40,7 @@ exports.getProfile = async (req, res) => {
         address: user.address,
         gender: user.gender,
         birth_date: user.birth_date,
+        role: user.role,
       },
     });
   } catch (error) {

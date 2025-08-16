@@ -36,6 +36,10 @@ const Order = sequelize.define('orders', {
     type: DataTypes.ENUM('PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'),
     defaultValue: 'PENDING',
   },
+  user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  }
 }, {
   timestamps: true,
 });

@@ -1,7 +1,7 @@
 const express = require("express");
 const adminController = require("../controllers/adminController");
 const authController = require("../controllers/authController");
-const brandController = require('../controllers/brandController');
+const brandController = require("../controllers/brandController");
 
 const router = express.Router();
 
@@ -15,13 +15,14 @@ router.post("/products/create", adminController.createProduct);
 router.put("/products/:id", adminController.updateProduct);
 router.delete("/products/:id", adminController.deleteProduct);
 
+router.get("/brand", brandController.getAllBrand);
+router.get("/brand/:id", brandController.getBrandByPk);
+router.post("/brand", brandController.createBrand);
+router.put("/brand/sort", brandController.sortBrand);
+router.put("/brand/:id", brandController.updateBrand);
 
-router.get('/brand', brandController.getAllBrand);
-router.get('/brand/:id', brandController.getBrandByPk);
-router.post('/brand', brandController.createBrand);
-router.put('/brand/sort', brandController.sortBrand);
-router.put('/brand/:id', brandController.updateBrand);
-
+router.put("/update-profile/:id", adminController.updateProdfileUser);
+router.delete("/user/:id", adminController.deleteUser);
 
 // Danh sách đơn hàng
 router.get("/orders", adminController.getAllOrders);
@@ -55,8 +56,6 @@ router.get(
 );
 
 router.put("/products/:id/name", adminController.updateProductName);
-
-
 
 router.put("/product-details/:id", adminController.updateProductDetail);
 module.exports = router;

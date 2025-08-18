@@ -1,10 +1,10 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('./../config/database');
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
+const { DataTypes } = require("sequelize");
+const sequelize = require("./../config/database");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 const User = sequelize.define(
-  'User',
+  "users",
   {
     user_id: {
       type: DataTypes.UUID,
@@ -55,13 +55,17 @@ const User = sequelize.define(
       allowNull: true,
     },
     role: {
-      type: DataTypes.ENUM('admin', 'user', 'seller', 'editor'),
+      type: DataTypes.ENUM("admin", "user", "seller", "editor"),
       allowNull: false,
-      defaultValue: 'user',
+      defaultValue: "user",
     },
     last_login: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM("ACTIVE", "INACTIVE"),
+      defaultValue: "ACTIVE",
     },
     password_changed_at: { type: DataTypes.DATE },
     password_reset_token: {
@@ -73,14 +77,14 @@ const User = sequelize.define(
   },
   {
     timestamps: true,
-    tableName: 'users',
-  },
+    tableName: "users",
+  }
 );
 
 const changedPasswordAfter = async (JWTTimestamp) => {
   if (this.password_changed_at) {
     const changedTimestamp = parseInt(
-      this.password_changed_at.getTime() / 1000,
+      this.password_changed_at.getTime() / 1000
     );
     return JWTTimestamp < changedTimestamp;
   }
@@ -88,17 +92,17 @@ const changedPasswordAfter = async (JWTTimestamp) => {
 };
 
 User.prototype.createPasswordResetToken = function () {
-  const resetToken = crypto.randomBytes(32).toString('hex');
+  const resetToken = crypto.randomBytes(32).toString("hex");
   this.password_reset_token = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(resetToken)
-    .digest('hex');
+    .digest("hex");
   this.password_reset_expired = Date.now() + 100 * 1000;
   return resetToken;
 };
 
 User.beforeSave(async (user) => {
-  if (user.changed('password')) {
+  if (user.changed("password")) {
     user.password = await bcrypt.hash(user.password, 10);
     user.password_changed_at = Date.now();
   }

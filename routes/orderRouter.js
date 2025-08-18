@@ -5,12 +5,12 @@ const { protect } = require("../middlewares/auth/profile");
 
 const router = express.Router();
 
+router.get("/", protect,  orderController.getAllOrder);
+router.get("/:id", protect,  orderController.getOrderDetails);
+router.put("/:id", protect,  orderController.updateOrder);
 router.post("/create-payment", protect, orderController.createPayment);
 router.get("/check-payment-vnpay",  orderController.checkPayment);
 
-// router.post('/checkout', authController.protect, orderController.createOrder);
-// router.get('/', authController.protect, authController.restrictTo('admin'), orderController.getAllOrders);
-// router.get('/:id', authController.protect, authController.restrictTo('admin'), orderController.getOrderById);
-// router.patch('/:id', authController.protect, authController.restrictTo('admin'), orderController.updateOrderStatus);
+
 
 module.exports = router;

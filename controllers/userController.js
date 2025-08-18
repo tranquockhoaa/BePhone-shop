@@ -1,9 +1,11 @@
 const User = require("./../models/user");
 const UserService = require("./../service/userService");
 const redisClient = require("./../config/redis");
+const bcrypt = require("bcryptjs")
 const { sendVerificationEmail } = require("../service/emailService");
 
 const catchAsync = require("./../utils/catchAsync");
+const { json } = require("sequelize");
 
 function generateCode(length = 6) {
   const chars =
@@ -24,10 +26,9 @@ exports.getUserByFullName = catchAsync(async (req, res, next) => {
   });
 });
 
-
 exports.getProfile = async (req, res) => {
   try {
-    const user = req.user; 
+    const user = req.user;
 
     res.status(200).json({
       status: "success",
@@ -127,14 +128,12 @@ exports.updateAvatar = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
-  const code = generateCode();
-
   try {
-    const user = await User.findOne({ where: { email } });
+    const code = generateCode();
+    const user = req.user;
     if (!user) return res.status(404).json({ error: "User không tồn tại" });
-    await sendVerificationEmail(email, code);
-    await redisClient.setEx(email, 300, code);
+    await sendVerificationEmail(user.email, code);
+    await redisClient.setEx(user.email, 300, code);
 
     res.json({ message: "Mã xác nhận đã được gửi đến email." });
   } catch (err) {
@@ -143,25 +142,76 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-
 exports.resetPassword = async (req, res) => {
-   const { email, code, newPassword } = req.body;
+  const {code, newPassword } = req.body;
   try {
+    const user = req.user;
+
     const storedCode = await redisClient.get(email);
-    if (!storedCode) return res.status(400).json({ error: 'Mã code đã hết hạn hoặc không tồn tại' });
-    if (storedCode !== code) return res.status(400).json({ error: 'Mã code không đúng' });
+    if (!storedCode)
+      return res
+        .status(400)
+        .json({ error: "Mã code đã hết hạn hoặc không tồn tại" });
+    if (storedCode !== code)
+      return res.status(400).json({ error: "Mã code không đúng" });
 
-    const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(404).json({ error: 'User không tồn tại' });
+    const userUpdate = await User.findOne({ where: { email: user.email } });
+    if (!userUpdate) return res.status(404).json({ error: "User không tồn tại" });
 
-    user.password = newPassword; 
+    user.password = newPassword;
     await user.save();
 
     await redisClient.del(email);
 
-    res.json({ message: 'Đổi mật khẩu thành công' });
+    res.json({ message: "Đổi mật khẩu thành công" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Lỗi server' });
+    res.status(500).json({ error: "Lỗi server" });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const userReq = req.user;
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findByPk(userReq.user_id);
+
+   if(!user) {
+    return res.status(400).json({
+      status: "error",
+      message: "Không tìm thấy người dùng"
+    })
+   }
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        error: 'Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới.',
+      });
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        error: 'Mật khẩu cũ không chính xác.',
+      });
+    }
+
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.status(400).json({
+        error: 'Mật khẩu mới không được trùng với mật khẩu cũ.',
+      });
+    }
+
+    user.password = newPassword; 
+    await user.save();
+
+    res.status(200).json({
+      message: 'Đổi mật khẩu thành công.',
+    });
+  } catch (error) {
+    console.error('Lỗi khi đổi mật khẩu:', error);
+    res.status(500).json({ error: 'Lỗi server.' });
   }
 };

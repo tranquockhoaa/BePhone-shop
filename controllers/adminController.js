@@ -378,6 +378,37 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
   }
 });
 
+
+exports.deleteUser = catchAsync(async (req, res, next) => {
+  try {
+
+    const {id} = req.params;
+    
+    const user = await User.findByPk(id);
+    if(!user) {
+      return res.status(400).json({
+        status: "error",
+        message: "User not found"
+      })
+    }
+
+    user.status = "INACTIVE"
+
+    await user.save();
+
+     return res.status(200).json({
+      status: "success",
+      message: "Xoá user thành công",
+    });
+
+
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+});
 // GET /api/v1/admin/orders/total-revenue
 exports.getTotalRevenue = catchAsync(async (req, res, next) => {
   const result = await Order.findOne({

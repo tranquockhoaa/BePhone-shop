@@ -28,6 +28,7 @@ router.get("/orders", adminController.getAllOrders);
 
 // Danh sách người dùng
 router.get("/users", adminController.getAllUsers);
+router.delete("/users/:id", adminController.deleteUser)
 
 // Tổng doanh thu
 router.get("/orders/total-revenue", adminController.getTotalRevenue);

@@ -1,14 +1,13 @@
-const Product = require('../models/product');
-const Order = require('../models/orders');
-const User = require('../models/user');
-const ProductDetail = require('../models/productDetails');
-const Color = require('../models/color');
-const Memory = require('../models/memory');
-const Brand = require('../models/brand');
+const Product = require("../models/product");
+const Order = require("../models/orders");
+const User = require("../models/user");
+const ProductDetail = require("../models/productDetails");
+const Color = require("../models/color");
+const Memory = require("../models/memory");
+const Brand = require("../models/brand");
 
-
-const { Op, fn, col, literal } = require('sequelize');
-const catchAsync = require('../utils/catchAsync');
+const { Op, fn, col, literal } = require("sequelize");
+const catchAsync = require("../utils/catchAsync");
 
 // GET /api/v1/admin/products
 exports.getAllProducts = catchAsync(async (req, res, next) => {
@@ -20,7 +19,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
       brand_id = "",
       sku = "",
       status = "",
-      sortBy = "createdAt", 
+      sortBy = "createdAt",
       sortOrder = "ASC",
       page = 1,
       size = 10,
@@ -32,18 +31,18 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     const whereClause = {};
     if (name) whereClause.name = { [Op.iLike]: `%${name}%` };
     if (code) whereClause.code = { [Op.iLike]: `%${code}%` };
-    if (description) whereClause.description = { [Op.iLike]: `%${description}%` };
+    if (description)
+      whereClause.description = { [Op.iLike]: `%${description}%` };
     if (sku) whereClause.sku = { [Op.iLike]: `%${sku}%` };
     if (status) whereClause.status = status;
     if (brand_id) whereClause.brand_id = brand_id;
 
     const products = await Product.findAndCountAll({
-       include: [
+      include: [
         {
           model: Brand,
           as: "brand",
         },
-        
       ],
       where: whereClause,
       limit,
@@ -58,7 +57,6 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
       currentPage: parseInt(page),
       data: products.rows,
     });
-
   } catch (error) {
     return res.status(500).json({
       status: "error",
@@ -91,8 +89,6 @@ exports.getProductById = catchAsync(async (req, res, next) => {
   });
 });
 
-
-
 exports.createProduct = catchAsync(async (req, res, next) => {
   try {
     const { name, code, description, brand_id, sku } = req.body;
@@ -119,7 +115,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
       description,
       brand_id,
       sku,
-      status: "ACTIVE"
+      status: "ACTIVE",
     });
 
     res.status(201).json({
@@ -137,38 +133,37 @@ exports.createProduct = catchAsync(async (req, res, next) => {
 exports.updateProduct = catchAsync(async (req, res, next) => {
   try {
     const { id } = req.params;
-  const { name, code, description, brand_id, sku, status } = req.body;
-  const product = await Product.findByPk(id);
-  if (!product) {
-    return res.status(404).json({
-      status: "Error",
-      message: "Sản phẩm không tồn tại",
+    const { name, code, description, brand_id, sku, status } = req.body;
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({
+        status: "Error",
+        message: "Sản phẩm không tồn tại",
+      });
+    }
+    product.name = name;
+    product.code = code;
+    product.description = description;
+    product.brand_id = brand_id;
+    product.sku = sku;
+    product.status = status || product.status;
+    await product.save();
+    res.status(200).json({
+      status: "Success",
+      data: product,
     });
-  }
-  product.name = name;
-  product.code = code;
-  product.description = description;
-  product.brand_id = brand_id;
-  product.sku = sku;
-  product.status = status || product.status;
-  await product.save();
-  res.status(200).json({
-    status: "Success",
-    data: product,
-  });
-
-  } catch(error) {
+  } catch (error) {
     return res.status(500).json({
       status: "Error",
       message: error.message,
     });
-  } })
-
+  }
+});
 
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-
+    console.log(id);
     const product = await Product.findByPk(id);
     if (!product) {
       return res.status(404).json({
@@ -191,82 +186,72 @@ exports.deleteProduct = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
 // GET /api/v1/admin/orders
 exports.getAllOrders = catchAsync(async (req, res, next) => {
   const { page = 1, limit = 20 } = req.query;
   const offset = (page - 1) * limit;
   const { count, rows } = await Order.findAndCountAll({
-    order: [['createdAt', 'DESC']],
+    order: [["createdAt", "DESC"]],
     offset: Number(offset),
-    limit: Number(limit)
+    limit: Number(limit),
   });
-  res.status(200).json({ status: 'success', total: count, orders: rows });
+  res.status(200).json({ status: "success", total: count, orders: rows });
 });
-
-
 
 // GET /api/v1/admin/users
 exports.getAllUsers = catchAsync(async (req, res, next) => {
   const { page = 1, limit = 20 } = req.query;
   const offset = (page - 1) * limit;
   const { count, rows } = await User.findAndCountAll({
-    order: [['createdAt', 'DESC']],
+    order: [["createdAt", "DESC"]],
     offset: Number(offset),
-    limit: Number(limit)
+    limit: Number(limit),
   });
-  res.status(200).json({ status: 'success', total: count, users: rows });
+  res.status(200).json({ status: "success", total: count, users: rows });
 });
 
 // GET /api/v1/admin/orders/total-revenue
 exports.getTotalRevenue = catchAsync(async (req, res, next) => {
   const result = await Order.findOne({
-    attributes: [[fn('SUM', col('total_amount')), 'totalRevenue']],
-    where: { status: 'DELIVERED' } // Sửa lại chỉ còn 'DELIVERED'
+    attributes: [[fn("SUM", col("total_amount")), "totalRevenue"]],
+    where: { status: "DELIVERED" }, // Sửa lại chỉ còn 'DELIVERED'
   });
-  res.status(200).json({ status: 'success', totalRevenue: result.get('totalRevenue') || 0 });
+  res
+    .status(200)
+    .json({ status: "success", totalRevenue: result.get("totalRevenue") || 0 });
 });
 
 // GET /api/v1/admin/orders/revenue-by-month
 exports.getRevenueByMonth = catchAsync(async (req, res, next) => {
   const result = await Order.findAll({
     attributes: [
-      [fn('DATE_TRUNC', 'month', col('createdAt')), 'month'],
-      [fn('SUM', col('total_amount')), 'revenue']
+      [fn("DATE_TRUNC", "month", col("createdAt")), "month"],
+      [fn("SUM", col("total_amount")), "revenue"],
     ],
-    where: { status: 'DELIVERED' }, // Sửa lại chỉ còn 'DELIVERED'
-    group: [literal('month')],
-    order: [[literal('month'), 'DESC']]
+    where: { status: "DELIVERED" }, // Sửa lại chỉ còn 'DELIVERED'
+    group: [literal("month")],
+    order: [[literal("month"), "DESC"]],
   });
-  res.status(200).json({ status: 'success', revenueByMonth: result });
+  res.status(200).json({ status: "success", revenueByMonth: result });
 });
 
 // GET /api/v1/admin/orders/count-by-month
 exports.getOrderCountByMonth = catchAsync(async (req, res, next) => {
   const result = await Order.findAll({
     attributes: [
-      [fn('DATE_TRUNC', 'month', col('createdAt')), 'month'],
-      [fn('COUNT', '*'), 'orderCount']
+      [fn("DATE_TRUNC", "month", col("createdAt")), "month"],
+      [fn("COUNT", "*"), "orderCount"],
     ],
-    group: [literal('month')],
-    order: [[literal('month'), 'DESC']]
+    group: [literal("month")],
+    order: [[literal("month"), "DESC"]],
   });
-  res.status(200).json({ status: 'success', orderCountByMonth: result });
+  res.status(200).json({ status: "success", orderCountByMonth: result });
 });
 
 // GET /api/v1/admin/products/top-selling
 exports.getTopSellingProducts = catchAsync(async (req, res, next) => {
-  const result = await Order.sequelize.query(`
+  const result = await Order.sequelize.query(
+    `
     SELECT p.product_id, p.name, SUM(oi.quantity) as totalSold
     FROM order_items oi
     JOIN product_details pd ON oi.product_detail_id = pd.product_detail_id
@@ -276,25 +261,27 @@ exports.getTopSellingProducts = catchAsync(async (req, res, next) => {
     GROUP BY p.product_id, p.name
     ORDER BY totalSold DESC
     LIMIT 5
-  `, { type: Order.sequelize.QueryTypes.SELECT });
-  res.status(200).json({ status: 'success', topSelling: result });
+  `,
+    { type: Order.sequelize.QueryTypes.SELECT }
+  );
+  res.status(200).json({ status: "success", topSelling: result });
 });
 
 // GET /api/v1/admin/products/low-stock
 exports.getLowStockProducts = catchAsync(async (req, res, next) => {
   const result = await ProductDetail.findAll({
-    attributes: ['product_detail_id', 'quantity'],
+    attributes: ["product_detail_id", "quantity"],
     where: { quantity: { [Op.lte]: 10 } },
     include: [
       {
         model: Product,
-        attributes: ['code', 'name'] // Lấy đúng tên sản phẩm từ bảng products
-      }
+        attributes: ["code", "name"], // Lấy đúng tên sản phẩm từ bảng products
+      },
     ],
-    order: [['quantity', 'ASC']],
-    limit: 10
+    order: [["quantity", "ASC"]],
+    limit: 10,
   });
-  res.status(200).json({ status: 'success', lowStock: result });
+  res.status(200).json({ status: "success", lowStock: result });
 });
 // GET /api/v1/admin/overview
 exports.getOverview = async (req, res, next) => {
@@ -306,8 +293,8 @@ exports.getOverview = async (req, res, next) => {
   today.setHours(0, 0, 0, 0);
   const ordersToday = await Order.count({
     where: {
-      createdAt: { [Op.gte]: today }
-    }
+      createdAt: { [Op.gte]: today },
+    },
   });
 
   // Số đơn hàng tuần này
@@ -316,113 +303,122 @@ exports.getOverview = async (req, res, next) => {
   weekStart.setHours(0, 0, 0, 0);
   const ordersThisWeek = await Order.count({
     where: {
-      createdAt: { [Op.gte]: weekStart }
-    }
+      createdAt: { [Op.gte]: weekStart },
+    },
   });
 
   // Số đơn hàng tháng này
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const ordersThisMonth = await Order.count({
     where: {
-      createdAt: { [Op.gte]: monthStart }
-    }
+      createdAt: { [Op.gte]: monthStart },
+    },
   });
 
   // Tổng doanh thu (đơn đã giao)
-  const totalRevenue = await Order.sum('total_amount', { where: { status: 'DELIVERED' } }) || 0;
+  const totalRevenue =
+    (await Order.sum("total_amount", { where: { status: "DELIVERED" } })) || 0;
 
   // Số lượng người dùng
   const totalUsers = await User.count();
 
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
       totalProducts,
       ordersToday,
       ordersThisWeek,
       ordersThisMonth,
       totalRevenue,
-      totalUsers
-    }
+      totalUsers,
+    },
   });
 };
 
 exports.getAllProductDetails = catchAsync(async (req, res, next) => {
-
   const details = await ProductDetail.findAll({
     attributes: [
-      'product_detail_id',
-      'price',
-      'quantity',
-      'discount',
-      'createdAt'
+      "product_detail_id",
+      "price",
+      "quantity",
+      "discount",
+      "createdAt",
     ],
     include: [
       {
         model: Product,
-        attributes: ['code', 'name'],
+        attributes: ["code", "name"],
         include: [
           {
             model: Brand,
-            attributes: ['name']
-          }
-        ]
+            attributes: ["name"],
+          },
+        ],
       },
       {
         model: Color,
-        attributes: ['name']
+        attributes: ["name"],
       },
       {
         model: Memory,
-        attributes: ['ram_size', 'storage_size'] // Lấy cả RAM và bộ nhớ trong
-      }
+        attributes: ["ram_size", "storage_size"], // Lấy cả RAM và bộ nhớ trong
+      },
     ],
-    order: [['createdAt', 'DESC']]
+    order: [["createdAt", "DESC"]],
   });
 
-  res.status(200).json({ status: 'success', total: details.length, productDetails: details });
+  res.status(200).json({
+    status: "success",
+    total: details.length,
+    productDetails: details,
+  });
 });
 
 exports.getAllProductsWithTotalQuantity = catchAsync(async (req, res, next) => {
-  const Brand = require('../models/brand');
+  const Brand = require("../models/brand");
   const products = await Product.findAll({
     attributes: [
-      'product_id',
-      'code',
-      'name',
-      'description',
-      [fn('COALESCE', fn('SUM', col('product_details.quantity')), 0), 'totalQuantity'],
-      'createdAt' // Thêm dòng này để lấy ngày nhập
+      "product_id",
+      "sku",
+      "code",
+      "name",
+      "description",
+      "status",
+      [
+        fn("COALESCE", fn("SUM", col("product_details.quantity")), 0),
+        "totalQuantity",
+      ],
+      "createdAt", // Thêm dòng này để lấy ngày nhập
     ],
     include: [
       {
         model: ProductDetail,
-        attributes: []
+        attributes: [],
       },
       {
         model: Brand,
-        attributes: ['name'] // Lấy tên thương hiệu
-      }
+        attributes: ["name", "brand_id"], // Lấy tên thương hiệu
+      },
     ],
-    group: ['products.product_id', 'brand.brand_id', 'brand.name'],
-    order: [['createdAt', 'DESC']]
+    group: ["products.product_id", "brand.brand_id", "brand.name"],
+    order: [["createdAt", "DESC"]],
   });
 
-  res.status(200).json({ status: 'success', total: products.length, products });
+  res.status(200).json({ status: "success", total: products.length, products });
 });
-
 
 exports.updateProductName = catchAsync(async (req, res, next) => {
   const { id } = req.params;
   const { name } = req.body;
   const product = await Product.findByPk(id);
   if (!product) {
-    return res.status(404).json({ status: 'error', message: 'Product not found' });
+    return res
+      .status(404)
+      .json({ status: "error", message: "Product not found" });
   }
   await product.update({ name });
-  res.status(200).json({ status: 'success', data: product });
+  res.status(200).json({ status: "success", data: product });
 });
-
 
 exports.updateProductDetail = catchAsync(async (req, res, next) => {
   const { id } = req.params;
@@ -430,10 +426,12 @@ exports.updateProductDetail = catchAsync(async (req, res, next) => {
 
   // Tìm product detail theo id
   const productDetail = await ProductDetail.findByPk(id, {
-    include: [Color, Memory]
+    include: [Color, Memory],
   });
   if (!productDetail) {
-    return res.status(404).json({ status: 'error', message: 'Product detail not found' });
+    return res
+      .status(404)
+      .json({ status: "error", message: "Product detail not found" });
   }
 
   // Nếu không truyền thì lấy giá trị cũ
@@ -448,7 +446,7 @@ exports.updateProductDetail = catchAsync(async (req, res, next) => {
 
   // Tìm hoặc tạo mới bộ nhớ (RAM + Storage)
   const [memory] = await Memory.findOrCreate({
-    where: { ram_size: ramSize, storage_size: storageSize }
+    where: { ram_size: ramSize, storage_size: storageSize },
   });
 
   // Kiểm tra trùng lặp (trừ chính bản ghi đang sửa)
@@ -457,11 +455,14 @@ exports.updateProductDetail = catchAsync(async (req, res, next) => {
       product_id: productDetail.product_id,
       color_id: color.color_id,
       memory_id: memory.memory_id,
-      product_detail_id: { [Op.ne]: id }
-    }
+      product_detail_id: { [Op.ne]: id },
+    },
   });
   if (existed) {
-    return res.status(400).json({ status: 'error', message: 'Đã tồn tại biến thể với thông tin này!' });
+    return res.status(400).json({
+      status: "error",
+      message: "Đã tồn tại biến thể với thông tin này!",
+    });
   }
 
   // Cập nhật thông tin
@@ -469,8 +470,8 @@ exports.updateProductDetail = catchAsync(async (req, res, next) => {
     color_id: color.color_id,
     memory_id: memory.memory_id,
     price,
-    quantity
+    quantity,
   });
 
-  res.status(200).json({ status: 'success', data: productDetail });
+  res.status(200).json({ status: "success", data: productDetail });
 });

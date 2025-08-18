@@ -33,9 +33,8 @@ const Product = sequelize.define(
     },
     status: {
       type: DataTypes.ENUM("ACTIVE", "INACTIVE"),
-      defaultValue: 'ACTIVE',
-
-    }
+      defaultValue: "ACTIVE",
+    },
   },
   {
     timestamps: true,
@@ -46,6 +45,5 @@ Product.belongsTo(Brand, {
   foreignKey: "brand_id",
   as: "brand",
 });
-
 
 module.exports = Product;

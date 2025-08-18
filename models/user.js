@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
 const User = sequelize.define(
-  'User',
+  'users',
   {
     user_id: {
       type: DataTypes.UUID,

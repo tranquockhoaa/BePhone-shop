@@ -2,6 +2,8 @@ const ProductDetail = require("../models/productDetails");
 const Product = require("../models/product");
 const Memory = require("../models/memory");
 const Media = require("../models/media");
+const { Op } = require("sequelize");
+
 exports.createProductDetail = async (req, res) => {
   try {
     const {
@@ -53,7 +55,16 @@ exports.getAllProductDetail = async (req, res) => {
       sortBy = "createdAt",
       sortOrder = "ASC",
       status,
+      search,
     } = req.query;
+
+    const validSortFields = [
+      "createdAt",
+      "updatedAt",
+      "price",
+      "quantity",
+      "status",
+    ];
 
     const limit = parseInt(size);
     const offset = (parseInt(page) - 1) * limit;
@@ -62,11 +73,29 @@ exports.getAllProductDetail = async (req, res) => {
     if (status) {
       whereClause.status = status;
     }
+    const finalSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+    const orderDirection = sortOrder.toUpperCase() === "DESC" ? "DESC" : "ASC";
+    const productWhereClause = {};
+
+    if (search) {
+      const isNumeric = /^\d+$/.test(search.trim());
+      if (isNumeric) {
+        productWhereClause.product_id = parseInt(search);
+      } else {
+        productWhereClause.name = {
+          [Op.iLike]: `%${search}%`,
+        };
+      }
+    }
+
     const productDetails = await ProductDetail.findAndCountAll({
       include: [
         {
           model: Product,
           as: "product",
+          where: Object.keys(productWhereClause).length
+            ? productWhereClause
+            : undefined,
         },
         {
           model: Memory,
@@ -76,7 +105,7 @@ exports.getAllProductDetail = async (req, res) => {
       limit,
       offset,
       where: whereClause,
-      order: [[sortBy, sortOrder.toUpperCase()]],
+      order: [[finalSortBy, orderDirection]],
       raw: false,
     });
 

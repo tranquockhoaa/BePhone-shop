@@ -37,10 +37,7 @@ const ProductDetails = sequelize.define(
     sku: {
       type: DataTypes.STRING,
     },
-    image: {
-      type: DataTypes.TEXT,
-     
-    },
+
     status: {
       type: DataTypes.ENUM("ACTIVE", "INACTIVE"),
     },

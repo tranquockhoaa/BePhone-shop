@@ -261,14 +261,14 @@ exports.restrictTo = (...roles) => {
 // controllers/authController.js
 // controllers/authController.js
 exports.registerAdmin = catchAsync(async (req, res, next) => {
-  const { full_name, email, password, phone_number, address } = req.body;
+  const { full_name, email, password, phone_number, address, role } = req.body;
   const user = await User.create({
     full_name,
     email,
     password,
     phone_number,
     address,
-    role: 'admin'
+    role: role
   });
   res.status(201).json({ status: 'success', data: user });
 });

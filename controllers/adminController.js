@@ -279,7 +279,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-
+    console.log(id);
     const product = await Product.findByPk(id);
     if (!product) {
       return res.status(404).json({
@@ -547,9 +547,11 @@ exports.getAllProductsWithTotalQuantity = catchAsync(async (req, res, next) => {
   const products = await Product.findAll({
     attributes: [
       "product_id",
+      "sku",
       "code",
       "name",
       "description",
+      "status",
       [
         fn("COALESCE", fn("SUM", col("product_details.quantity")), 0),
         "totalQuantity",
@@ -563,7 +565,7 @@ exports.getAllProductsWithTotalQuantity = catchAsync(async (req, res, next) => {
       },
       {
         model: Brand,
-        attributes: ["name"], // Lấy tên thương hiệu
+        attributes: ["name", "brand_id"], // Lấy tên thương hiệu
       },
     ],
     group: ["products.product_id", "brand.brand_id", "brand.name"],

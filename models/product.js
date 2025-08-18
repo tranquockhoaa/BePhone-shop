@@ -21,8 +21,6 @@ const Product = sequelize.define(
     brand_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      type: DataTypes.INTEGER,
-      allowNull: false,
       references: {
         model: "brands",
         key: "brand_id",
@@ -31,11 +29,13 @@ const Product = sequelize.define(
     sku: {
       type: DataTypes.TEXT,
     },
+    color: {
+      type: DataTypes.TEXT,
+    },
     status: {
       type: DataTypes.ENUM("ACTIVE", "INACTIVE"),
-      defaultValue: 'ACTIVE',
-
-    }
+      defaultValue: "ACTIVE",
+    },
   },
   {
     timestamps: true,
@@ -46,6 +46,5 @@ Product.belongsTo(Brand, {
   foreignKey: "brand_id",
   as: "brand",
 });
-
 
 module.exports = Product;

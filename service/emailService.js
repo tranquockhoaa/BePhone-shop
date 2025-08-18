@@ -36,4 +36,22 @@ async function sendVerificationEmail(to, code) {
   await transporter.sendMail(mailOptions);
 }
 
-module.exports = { sendVerificationEmail };
+async function sendPaymentSuccessEmail(to, orderDetails) {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to,
+    subject: "Xác nhận thanh toán thành công",
+    template: "paymentSuccess",
+    context: {
+      customerName: orderDetails.customerName,
+      code: orderDetails.code,
+      amount: orderDetails.amount,
+      paymentDate: orderDetails.paymentDate,
+    },
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+
+module.exports = { sendVerificationEmail, sendPaymentSuccessEmail };

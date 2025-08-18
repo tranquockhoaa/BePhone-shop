@@ -1,10 +1,11 @@
 const ProductService = require("./../service/productService");
 const catchAsync = require("./../utils/catchAsync");
 const Product = require("./../models/product");
-const Brand = require('../models/brand');
+const Brand = require("../models/brand");
+const Media = require("../models/media");
+const Color = require("../models/color");
 
 const { Op } = require("sequelize");
-
 
 exports.getAllProducts = catchAsync(async (req, res, next) => {
   try {
@@ -15,7 +16,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
       brand_id = "",
       sku = "",
       status = "",
-      sortBy = "createdAt", 
+      sortBy = "createdAt",
       sortOrder = "ASC",
       page = 1,
       size = 10,
@@ -25,14 +26,28 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     const offset = (parseInt(page) - 1) * limit;
 
     const whereClause = {
-      status: 'ACTIVE',
+      status: "ACTIVE",
     };
     if (name) whereClause.name = { [Op.iLike]: `%${name}%` };
     if (code) whereClause.code = { [Op.iLike]: `%${code}%` };
-    if (description) whereClause.description = { [Op.iLike]: `%${description}%` };
+    if (description)
+      whereClause.description = { [Op.iLike]: `%${description}%` };
     if (sku) whereClause.sku = { [Op.iLike]: `%${sku}%` };
     if (status) whereClause.status = status;
     if (brand_id) whereClause.brand_id = brand_id;
+
+    const allowedSortFields = [
+      "createdAt",
+      "updatedAt",
+      "name",
+      "code",
+      "sku",
+      "status",
+      "product_id",
+    ];
+
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+    const sort = sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     const products = await Product.findAndCountAll({
       include: [
@@ -40,22 +55,69 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
           model: Brand,
           as: "brand",
         },
-        
       ],
       where: whereClause,
       limit,
       offset,
-      order: [[sortBy, sortOrder]],
+      order: [[sortField, sort]],
     });
+
+    const enrichedProducts = await Promise.all(
+      products.rows.map(async (product) => {
+        let colorData = [];
+        if (product.color !== null) {
+          try {
+            const parsedColor = JSON.parse(product.color);
+            if (Array.isArray(parsedColor)) {
+              for (const colorItem of parsedColor) {
+                const color = await Color.findByPk(colorItem.color);
+                const images = await Media.findAll({
+                  where: { id: { [Op.in]: colorItem.img || [] } },
+                });
+
+                const imageLinks = images.map((image) => {
+                  const base64 = image.data.toString("base64");
+                  const mimeType = image.mimetype;
+                  const link = `data:${mimeType};base64,${base64}`;
+                  return {
+                    id: image.id,
+                    link,
+                  };
+                });
+
+                colorData.push({
+                  color,
+                  images: imageLinks,
+                });
+              }
+            }
+          } catch (e) {
+            console.warn("Không thể parse trường color:", product.color);
+          }
+        }
+
+        return {
+          product_id: product.product_id,
+          name: product.name,
+          code: product.code,
+          description: product.description,
+          brand: product.brand,
+          sku: product.sku,
+          color: colorData,
+          status: product.status,
+          createdAt: product.createdAt,
+          updatedAt: product.updatedAt,
+        };
+      })
+    );
 
     return res.status(200).json({
       status: "success",
       totalItems: products.count,
       totalPages: Math.ceil(products.count / limit),
       currentPage: parseInt(page),
-      data: products.rows,
+      data: enrichedProducts,
     });
-
   } catch (error) {
     return res.status(500).json({
       status: "error",
@@ -63,7 +125,6 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     });
   }
 });
-
 
 exports.getProductById = catchAsync(async (req, res, next) => {
   const { id } = req.params;
@@ -83,12 +144,54 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     });
   }
 
+  let colorData = [];
+  if (product.color !== null) {
+    try {
+      const parsedColor = JSON.parse(product.color);
+      if (Array.isArray(parsedColor)) {
+        for (const colorItem of parsedColor) {
+          const color = await Color.findByPk(colorItem.color);
+          const images = await Media.findAll({
+            where: { id: { [Op.in]: colorItem.img || [] } },
+          });
+
+          const imageLinks = images.map((image) => {
+            const base64 = image.data.toString("base64");
+            const mimeType = image.mimetype;
+            const link = `data:${mimeType};base64,${base64}`;
+            return {
+              id: image.id,
+              link,
+            };
+          });
+
+          colorData.push({
+            color,
+            images: imageLinks,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Không thể parse trường color:", product.color);
+    }
+  }
+
   res.status(200).json({
     status: "success",
-    data: product,
+    data: {
+      product_id: product.product_id,
+      name: product.name,
+      code: product.code,
+      description: product.description,
+      brand: product.brand,
+      sku: product.sku,
+      color: colorData,
+      status: product.status,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+    },
   });
 });
-
 
 exports.getCodeProductForHomePage = catchAsync(async (req, res, next) => {
   const data = req.query;
@@ -111,8 +214,6 @@ exports.getLastestProducts = catchAsync(async (req, res, next) => {
     },
   });
 });
-
-
 
 exports.getInfoDetailByCodeName = catchAsync(async (req, res, next) => {
   const queryParams = req.query;

@@ -8,11 +8,12 @@ router.post("/login", authController.login);
 router.post("/forgotPassword", authController.forgotPassword);
 router.patch("/resetPassword/:token", authController.resetPassword);
 router.patch(
-  "/updatePassword",
+  "/change-password/:token",
   authController.protect,
-  authController.updatePassword,
-  authController.logout
+  authController.updatePassword
 );
+
+router.put("/update-profile/:token", authController.updateProdfile);
 // router.get(
 //   '/:fullName',
 //   authController.protect,

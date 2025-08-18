@@ -24,10 +24,9 @@ exports.getUserByFullName = catchAsync(async (req, res, next) => {
   });
 });
 
-
 exports.getProfile = async (req, res) => {
   try {
-    const user = req.user; 
+    const user = req.user;
 
     res.status(200).json({
       status: "success",
@@ -143,25 +142,28 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-
 exports.resetPassword = async (req, res) => {
-   const { email, code, newPassword } = req.body;
+  const { email, code, newPassword } = req.body;
   try {
     const storedCode = await redisClient.get(email);
-    if (!storedCode) return res.status(400).json({ error: 'Mã code đã hết hạn hoặc không tồn tại' });
-    if (storedCode !== code) return res.status(400).json({ error: 'Mã code không đúng' });
+    if (!storedCode)
+      return res
+        .status(400)
+        .json({ error: "Mã code đã hết hạn hoặc không tồn tại" });
+    if (storedCode !== code)
+      return res.status(400).json({ error: "Mã code không đúng" });
 
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(404).json({ error: 'User không tồn tại' });
+    if (!user) return res.status(404).json({ error: "User không tồn tại" });
 
-    user.password = newPassword; 
+    user.password = newPassword;
     await user.save();
 
     await redisClient.del(email);
 
-    res.json({ message: 'Đổi mật khẩu thành công' });
+    res.json({ message: "Đổi mật khẩu thành công" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Lỗi server' });
+    res.status(500).json({ error: "Lỗi server" });
   }
 };

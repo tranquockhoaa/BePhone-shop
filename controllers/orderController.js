@@ -3,6 +3,7 @@ const Order = require("../models/orders");
 const OrderItem = require("../models/orderItem");
 const catchAsync = require("../utils/catchAsync");
 const sequelize = require("./../config/database");
+const { sendPaymentSuccessEmail } = require("../service/emailService");
 
 const {
   VNPay,
@@ -11,6 +12,7 @@ const {
   VnpLocale,
   dateFormat,
 } = require("vnpay");
+const { User } = require("../models");
 
 function generateRandomTxnRef(length = 10) {
   const chars =
@@ -21,6 +23,26 @@ function generateRandomTxnRef(length = 10) {
   }
   return result;
 }
+
+const formatVNDate = (vnpPayDate) => {
+  // Chuỗi vnp_PayDate có định dạng: "yyyyMMddHHmmss"
+  const year = vnpPayDate.substring(0, 4);
+  const month = vnpPayDate.substring(4, 6);
+  const day = vnpPayDate.substring(6, 8);
+  const hour = vnpPayDate.substring(8, 10);
+  const minute = vnpPayDate.substring(10, 12);
+  const second = vnpPayDate.substring(12, 14);
+
+  return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
+};
+
+const formatCurrencyVND = (amount) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount);
+};
+
 exports.createPayment = async (req, res) => {
   try {
     const t = await sequelize.transaction();
@@ -28,7 +50,6 @@ exports.createPayment = async (req, res) => {
       products,
       full_name,
       phone_number,
-      email,
       address,
       total_amount,
       payment_method,
@@ -36,7 +57,7 @@ exports.createPayment = async (req, res) => {
     const user = req.user;
     const txn = generateRandomTxnRef();
 
-    if (!full_name || !phone_number || !email || !address || !total_amount) {
+    if (!full_name || !phone_number || !address || !total_amount) {
       return res.status(400).json({
         status: "error",
         message: "Thiếu thông tin thanh toán",
@@ -48,7 +69,7 @@ exports.createPayment = async (req, res) => {
         code: txn,
         full_name,
         phone_number,
-        email,
+        email: user.email,
         address,
         total_amount,
         payment_method,
@@ -73,29 +94,42 @@ exports.createPayment = async (req, res) => {
 
     await t.commit();
 
-    const vnpay = new VNPay({
-      tmnCode: process.env.TMN_CODE,
-      secureSecret: process.env.SECURE_SECRET,
-      vnpayHost: "https://sandbox.vnpayment.vn",
-      testMode: true,
-      hashAlgorithm: "SHA512",
-      loggerFn: ignoreLogger,
-    });
+    if (payment_method === "VNPAY") {
+      const vnpay = new VNPay({
+        tmnCode: process.env.TMN_CODE,
+        secureSecret: process.env.SECURE_SECRET,
+        vnpayHost: "https://sandbox.vnpayment.vn",
+        testMode: true,
+        hashAlgorithm: "SHA512",
+        loggerFn: ignoreLogger,
+      });
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const vnpayResponse = await vnpay.buildPaymentUrl({
-      vnp_Amount: total_amount,
-      vnp_IpAddr: "127.0.0.1",
-      vnp_TxnRef: txn,
-      vnp_OrderInfo: `Thanh toán đơn hàng ${txn}`,
-      vnp_OrderType: ProductCode.Other,
-      vnp_ReturnUrl: "http://localhost:3000/api/v1/order/check-payment-vnpay",
-      vnp_CreateDate: dateFormat(new Date()),
-      vnp_ExpireDate: dateFormat(tomorrow),
-    });
-
-    return res.status(200).json(vnpayResponse);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const vnpayResponse = await vnpay.buildPaymentUrl({
+        vnp_Amount: total_amount,
+        vnp_IpAddr: "127.0.0.1",
+        vnp_TxnRef: txn,
+        vnp_OrderInfo: `Thanh toán đơn hàng ${txn}`,
+        vnp_OrderType: ProductCode.Other,
+        vnp_ReturnUrl: "http://localhost:3000/api/v1/order/check-payment-vnpay",
+        vnp_CreateDate: dateFormat(new Date()),
+        vnp_ExpireDate: dateFormat(tomorrow),
+      });
+      return res.status(200).json(vnpayResponse);
+    } else {
+      await sendPaymentSuccessEmail("ductmhe160745@fpt.edu.vn", {
+        title: "Hello Đức",
+        customerName: full_name,
+        code: txn,
+        amount: formatCurrencyVND(total_amount),
+        paymentDate: Date(),
+      });
+      return res.status(200).json({
+        status: "success",
+        message: "Đặt đơn thàng thành công",
+      });
+    }
   } catch (error) {
     return res.status(500).json({
       status: "error",
@@ -107,8 +141,6 @@ exports.createPayment = async (req, res) => {
 
 exports.checkPayment = async (req, res) => {
   try {
-
-    const user = req.user;
     const vnpay = new VNPay({
       tmnCode: "2BXC2ONJ",
       secureSecret: "1D2V0ZMGB3SFFGHBC2DWI065E1W1POIV",
@@ -129,6 +161,8 @@ exports.checkPayment = async (req, res) => {
     const responseCode = req.query.vnp_ResponseCode;
     const transactionStatus = req.query.vnp_TransactionStatus;
     const txnRef = req.query.vnp_TxnRef;
+    const payDate = req.query.vnp_PayDate;
+    const formattedPayDate = formatVNDate(payDate);
 
     const order = await Order.findOne({
       where: { code: txnRef },
@@ -149,6 +183,21 @@ exports.checkPayment = async (req, res) => {
       } else {
         console.log("Đơn hàng đã được xác nhận từ trước, không cập nhật lại.");
       }
+
+      const user = User.findByPk(order.user_id);
+      if (!user) {
+        return res.status(404).json({
+          status: "fail",
+          message: "user không tồn tại",
+        });
+      }
+
+      await sendPaymentSuccessEmail(user.email, {
+        customerName: order.full_name,
+        code: order.code,
+        amount: formatCurrencyVND(order.total_amount),
+        paymentDate: formattedPayDate,
+      });
       return res.status(200).json({
         status: "success",
         message: "Giao dịch thành công",

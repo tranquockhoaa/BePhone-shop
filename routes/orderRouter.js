@@ -6,7 +6,7 @@ const { protect } = require("../middlewares/auth/profile");
 const router = express.Router();
 
 router.post("/create-payment", protect, orderController.createPayment);
-router.get("/check-payment-vnpay", protect, orderController.checkPayment);
+router.get("/check-payment-vnpay",  orderController.checkPayment);
 
 // router.post('/checkout', authController.protect, orderController.createOrder);
 // router.get('/', authController.protect, authController.restrictTo('admin'), orderController.getAllOrders);

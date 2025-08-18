@@ -42,10 +42,10 @@ const Order = sequelize.define(
 
     status: {
       type: DataTypes.ENUM(
-        "PENDING",
-        "CONFIRMED",
-        "SHIPPED",
-        "DELIVERED",
+        "PENDING", // Chờ xử lý
+        "CONFIRMED", // Đã xác nhận
+        "SHIPPING", // Đang giao hàng
+        "DELIVERED", // Đã giao hàng
         "CANCELLED"
       ),
       defaultValue: "PENDING",

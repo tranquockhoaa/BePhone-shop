@@ -43,6 +43,8 @@ async function sendPaymentSuccessEmail(to, orderDetails) {
     subject: "Xác nhận thanh toán thành công",
     template: "paymentSuccess",
     context: {
+      title: orderDetails?.title || "Thanh Toán Thành Công",
+      message: orderDetails?.message || "Cảm ơn bạn đã thanh toán! Giao dịch của bạn đã được xử lý thành công.",
       customerName: orderDetails.customerName,
       code: orderDetails.code,
       amount: orderDetails.amount,

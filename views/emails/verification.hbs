@@ -1,46 +1,191 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       body {
-        font-family: Arial, sans-serif;
-        background-color: whitesmoke;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 40px 20px;
+        min-height: 100vh;
       }
-      h1 {
-        font-weight: 500;
+      
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
       }
-    </style>
-    <title>Document</title>
-  </head>
-  <body>
-    <h1 style="text-align: center; font-weight: 500; margin-bottom: 80px">
-      LẤY LẠI MẬT KHẨU
-    </h1>
-    <div
-      style="
+      
+      .header {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        padding: 40px 30px;
+        text-align: center;
+      }
+      
+      .header h1 {
+        color: white;
+        font-size: 28px;
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+      
+      .content {
+        padding: 50px 40px;
+        text-align: center;
+      }
+      
+      .icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        border-radius: 50%;
+        margin: 0 auto 30px;
         display: flex;
         align-items: center;
-        flex-direction: column;
-        width: 456px;
-        background-color: white;
-        margin: auto;
-        margin-bottom: 60px;
-      "
-    >
-      <p style="font-size: 20px; color: #666666; text-align: center">
-        Đây là mã để lấy lại mật khẩu của bạn:<br />
-        <br />
-      </p>
-      <p style="font-size: 37px; color: black; font-weight: 900; margin: 0">
-        {{code}}
-      </p>
-      <p style="font-size: 18px; color: #666666">Mã này sẽ sớm hết hạn</p>
+        justify-content: center;
+        font-size: 36px;
+        color: white;
+      }
+      
+      .message {
+        font-size: 18px;
+        color: #4b5563;
+        line-height: 1.6;
+        margin-bottom: 40px;
+      }
+      
+      .code-container {
+        background: #f8fafc;
+        border: 2px dashed #e2e8f0;
+        border-radius: 12px;
+        padding: 30px;
+        margin: 30px 0;
+        position: relative;
+      }
+      
+      .code {
+        font-size: 42px;
+        font-weight: 800;
+        color: #1e293b;
+        letter-spacing: 8px;
+        font-family: 'Courier New', monospace;
+        margin: 0;
+      }
+      
+      .expiry {
+        font-size: 16px;
+        color: #ef4444;
+        margin-top: 20px;
+        font-weight: 500;
+      }
+      
+      .warning {
+        background: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        padding: 20px;
+        margin: 40px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      
+      .warning-text {
+        font-size: 16px;
+        color: #92400e;
+        line-height: 1.5;
+        margin: 0;
+      }
+      
+      .footer {
+        background: #f8fafc;
+        padding: 30px;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+      }
+      
+      .footer-text {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 0;
+      }
+      
+      @media (max-width: 640px) {
+        body {
+          padding: 20px 10px;
+        }
+        
+        .container {
+          border-radius: 12px;
+        }
+        
+        .header {
+          padding: 30px 20px;
+        }
+        
+        .header h1 {
+          font-size: 24px;
+        }
+        
+        .content {
+          padding: 40px 20px;
+        }
+        
+        .code {
+          font-size: 36px;
+          letter-spacing: 4px;
+        }
+        
+        .icon {
+          width: 60px;
+          height: 60px;
+          font-size: 28px;
+        }
+      }
+    </style>
+    <title>Xác Nhận Email</title>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Added modern header with gradient background -->
+      <div class="header">
+        <h1>XÁC NHẬN EMAIL</h1>
+      </div>
+      
+      <div class="content">
+        <!-- Added security icon for visual appeal -->
+        <div class="icon">🔐</div>
+        
+        <!-- Improved message styling and readability -->
+        <p class="message">
+          Chúng tôi đã nhận được yêu cầu lấy lại mật khẩu cho tài khoản của bạn.<br>
+          Vui lòng sử dụng mã xác nhận bên dưới:
+        </p>
+        
+        <!-- Enhanced code display with modern container design -->
+        <div class="code-container">
+          <p class="code">{{code}}</p>
+          <p class="expiry">⏰ Mã này sẽ hết hạn sau 10 phút</p>
+        </div>
+        
+        <!-- Added warning section with better visual hierarchy -->
+        <div class="warning">
+          <p class="warning-text">
+            <strong>⚠️ Lưu ý bảo mật:</strong> Nếu bạn không phải là người gửi yêu cầu này, 
+            hãy đổi mật khẩu tài khoản ngay lập tức để tránh việc bị truy cập trái phép.
+          </p>
+        </div>
+      </div>
+      
+      <!-- Added professional footer -->
+      <div class="footer">
+        <p class="footer-text">
+          Email này được gửi tự động. Vui lòng không trả lời email này.
+        </p>
+      </div>
     </div>
-    <p style="text-align: center; width: 456px; margin: auto; font-size: 18px">
-      Nếu bạn không phải là người gửi yêu cầu này, hãy đổi mật khẩu tài khoản
-      ngay lập tức để tránh việc bị truy cập trái phép.
-    </p>
   </body>
 </html>

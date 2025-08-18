@@ -5,6 +5,7 @@ const ProductDetail = require("../models/productDetails");
 const Color = require("../models/color");
 const Memory = require("../models/memory");
 const Brand = require("../models/brand");
+const Media = require("../models/media");
 
 const { Op, fn, col, literal } = require("sequelize");
 const catchAsync = require("../utils/catchAsync");
@@ -38,6 +39,19 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     if (status) whereClause.status = status;
     if (brand_id) whereClause.brand_id = brand_id;
 
+    const allowedSortFields = [
+      "createdAt",
+      "updatedAt",
+      "name",
+      "code",
+      "sku",
+      "status",
+      "product_id",
+    ];
+
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
+    const sort = sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
+
     const products = await Product.findAndCountAll({
       include: [
         {
@@ -48,15 +62,63 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
       where: whereClause,
       limit,
       offset,
-      order: [[sortBy, sortOrder]],
+      order: [[sortField, sort]],
     });
+    const enrichedProducts = await Promise.all(
+      products.rows.map(async (product) => {
+        let colorData = [];
+        if (product.color !== null) {
+          try {
+            const parsedColor = JSON.parse(product.color);
+            if (Array.isArray(parsedColor)) {
+              for (const colorItem of parsedColor) {
+                const color = await Color.findByPk(colorItem.color);
+                const images = await Media.findAll({
+                  where: { id: { [Op.in]: colorItem.img || [] } },
+                });
+
+                const imageLinks = images.map((image) => {
+                  const base64 = image.data.toString("base64");
+                  const mimeType = image.mimetype;
+                  const link = `data:${mimeType};base64,${base64}`;
+                  return {
+                    id: image.id,
+                    link,
+                  };
+                });
+
+                colorData.push({
+                  color,
+                  images: imageLinks,
+                });
+              }
+            }
+          } catch (e) {
+            console.warn("Không thể parse trường color:", product.color);
+          }
+        }
+
+        return {
+          product_id: product.product_id,
+          name: product.name,
+          code: product.code,
+          description: product.description,
+          brand: product.brand,
+          sku: product.sku,
+          color: colorData,
+          status: product.status,
+          createdAt: product.createdAt,
+          updatedAt: product.updatedAt,
+        };
+      })
+    );
 
     return res.status(200).json({
       status: "success",
       totalItems: products.count,
       totalPages: Math.ceil(products.count / limit),
       currentPage: parseInt(page),
-      data: products.rows,
+      data: enrichedProducts,
     });
   } catch (error) {
     return res.status(500).json({
@@ -84,17 +146,60 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     });
   }
 
+  let colorData = [];
+  if (product.color !== null) {
+    try {
+      const parsedColor = JSON.parse(product.color);
+      if (Array.isArray(parsedColor)) {
+        for (const colorItem of parsedColor) {
+          const color = await Color.findByPk(colorItem.color);
+          const images = await Media.findAll({
+            where: { id: { [Op.in]: colorItem.img || [] } },
+          });
+
+          const imageLinks = images.map((image) => {
+            const base64 = image.data.toString("base64");
+            const mimeType = image.mimetype;
+            const link = `data:${mimeType};base64,${base64}`;
+            return {
+              id: image.id,
+              link,
+            };
+          });
+
+          colorData.push({
+            color,
+            images: imageLinks,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Không thể parse trường color:", product.color);
+    }
+  }
+
   res.status(200).json({
     status: "success",
-    data: product,
+    data: {
+      product_id: product.product_id,
+      name: product.name,
+      code: product.code,
+      description: product.description,
+      brand: product.brand,
+      sku: product.sku,
+      color: colorData,
+      status: product.status,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+    },
   });
 });
 
 exports.createProduct = catchAsync(async (req, res, next) => {
   try {
-    const { name, code, description, brand_id, sku } = req.body;
+    const { name, code, description, brand_id, sku, color } = req.body;
 
-    if (!name || !code || !description || !brand_id || !sku) {
+    if (!name || !code || !description || !brand_id || !sku || !color) {
       return res.status(400).json({
         status: "Error",
         message: "Thiếu các trường bắt buộc",
@@ -102,13 +207,13 @@ exports.createProduct = catchAsync(async (req, res, next) => {
     }
 
     const checkProduct = await Product.findOne({ where: { sku } });
-
     if (checkProduct) {
       return res.status(400).json({
         status: "Error",
         message: "Sản phẩm đã tồn tại với SKU này",
       });
     }
+    const colorString = color ? JSON.stringify(color) : null;
 
     const newProduct = await Product.create({
       name,
@@ -116,6 +221,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
       description,
       brand_id,
       sku,
+      color: colorString,
       status: "ACTIVE",
     });
 
@@ -134,12 +240,21 @@ exports.createProduct = catchAsync(async (req, res, next) => {
 exports.updateProduct = catchAsync(async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, code, description, brand_id, sku, status } = req.body;
+    const { name, code, description, brand_id, sku, status, color } = req.body;
     const product = await Product.findByPk(id);
     if (!product) {
       return res.status(404).json({
         status: "Error",
         message: "Sản phẩm không tồn tại",
+      });
+    }
+
+    const checkProduct = await Product.findOne({ where: { sku } });
+
+    if (checkProduct) {
+      return res.status(400).json({
+        status: "Error",
+        message: "Sản phẩm đã tồn tại với SKU này",
       });
     }
     product.name = name;
@@ -148,6 +263,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     product.brand_id = brand_id;
     product.sku = sku;
     product.status = status || product.status;
+    product.color = color ? JSON.stringify(color) : null;
     await product.save();
     res.status(200).json({
       status: "Success",
@@ -201,14 +317,66 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
 
 // GET /api/v1/admin/users
 exports.getAllUsers = catchAsync(async (req, res, next) => {
-  const { page = 1, limit = 20 } = req.query;
-  const offset = (page - 1) * limit;
-  const { count, rows } = await User.findAndCountAll({
-    order: [["createdAt", "DESC"]],
-    offset: Number(offset),
-    limit: Number(limit),
-  });
-  res.status(200).json({ status: "success", total: count, users: rows });
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      full_name,
+      email,
+      phone_number,
+      address,
+      gender,
+      birth_date,
+    } = req.query;
+
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+
+    if (full_name) {
+      whereClause.full_name = { [Op.iLike]: `%${full_name}%` };
+    }
+
+    if (email) {
+      whereClause.email = { [Op.iLike]: `%${email}%` };
+    }
+
+    if (phone_number) {
+      whereClause.phone_number = { [Op.iLike]: `%${phone_number}%` };
+    }
+
+    if (address) {
+      whereClause.address = { [Op.iLike]: `%${address}%` };
+    }
+
+    if (gender) {
+      whereClause.gender = gender;
+    }
+
+    if (birth_date) {
+      whereClause.birth_date = birth_date;
+    }
+
+    const { count, rows } = await User.findAndCountAll({
+      where: whereClause,
+      order: [["createdAt", "DESC"]],
+      offset: Number(offset),
+      limit: Number(limit),
+    });
+
+    res.status(200).json({
+      status: "success",
+      total: count,
+      page: Number(page),
+      limit: Number(limit),
+      users: rows,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
 });
 
 // GET /api/v1/admin/orders/total-revenue

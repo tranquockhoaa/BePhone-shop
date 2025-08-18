@@ -38,7 +38,8 @@
     "react-router-dom": "^7.4.0",
     "redis": "^4.7.0",
     "sequelize": "^6.37.6",
-    "tls": "^0.0.1"
+    "tls": "^0.0.1",
+    "vnpay": "^2.4.1"
   },
   "devDependencies": {
     "ndb": "^0.2.4"

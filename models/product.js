@@ -21,14 +21,15 @@ const Product = sequelize.define(
     brand_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      type: DataTypes.INTEGER,
-      allowNull: false,
       references: {
         model: "brands",
         key: "brand_id",
       },
     },
     sku: {
+      type: DataTypes.TEXT,
+    },
+    color: {
       type: DataTypes.TEXT,
     },
     status: {

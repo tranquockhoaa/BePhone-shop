@@ -1,13 +1,13 @@
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-const User = require('./../models/user');
-const bcrypt = require('bcryptjs');
-const AppError = require('./../utils/appError');
-const sendEmail = require('./../utils/email');
-const catchAsync = require('./../utils/catchAsync');
-const { promisify } = require('util');
-const redisClient = require('./../config/redis');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
+const User = require("./../models/user");
+const bcrypt = require("bcryptjs");
+const AppError = require("./../utils/appError");
+const sendEmail = require("./../utils/email");
+const catchAsync = require("./../utils/catchAsync");
+const { promisify } = require("util");
+const redisClient = require("./../config/redis");
+const { v4: uuidv4 } = require("uuid");
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -27,7 +27,7 @@ const deleteKeyRedis = catchAsync(async (partten) => {
     await Promise.all(
       keys.map((e) => {
         redisClient.del(e);
-      }),
+      })
     );
 });
 // sesssion token user id
@@ -40,7 +40,7 @@ const createSendToken = async (user, statusCode, res) => {
 
   redisClient.set(key, token, { EX: expiredJWT });
   res.status(statusCode).json({
-    status: 'success',
+    status: "success",
     token,
   });
 };
@@ -49,7 +49,7 @@ exports.signup = catchAsync(async (req, res, next) => {
   const isRegistered = await User.findOne({ where: { email: req.body.email } });
   console.log(isRegistered);
   if (isRegistered) {
-    throw new AppError('this email is registered');
+    throw new AppError("Email đã được đăng kí");
   }
 
   const newUser = await User.create({
@@ -69,19 +69,19 @@ exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(401).json({
-      status: 'Fail',
-      message: 'Please provide email and password',
+      status: "Fail",
+      message: "Please provide email and password",
     });
   }
 
   const user = await User.findOne({ where: { email } });
   if (!user) {
-    return next(new AppError('Can not find account!', 400));
+    return next(new AppError("Can not find account!", 400));
   }
 
   const checkPassword = await bcrypt.compare(password, user.password);
   if (!checkPassword) {
-    return next(new AppError('Password is incorrect!'));
+    return next(new AppError("Password is incorrect!"));
   }
 
   // Trả về role để FE điều hướng
@@ -91,27 +91,27 @@ exports.login = catchAsync(async (req, res, next) => {
   redisClient.set(key, token, { EX: expiredJWT });
 
   res.status(200).json({
-    status: 'success',
+    status: "success",
     token,
     user: {
       id: user.user_id,
       full_name: user.full_name,
       email: user.email,
-      role: user.role
-    }
+      role: user.role,
+    },
   });
 });
 exports.protect = catchAsync(async (req, res, next) => {
-  console.log('protect running');
+  console.log("protect running");
   let token;
   if (
     req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
+    req.headers.authorization.startsWith("Bearer")
   ) {
-    token = req.headers.authorization.split(' ')[1];
+    token = req.headers.authorization.split(" ")[1];
   }
   if (!token) {
-    return next(new AppError('you are not login!'));
+    return next(new AppError("you are not login!"));
   }
 
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
@@ -119,11 +119,11 @@ exports.protect = catchAsync(async (req, res, next) => {
   const keyRedisIsValid = () => {
     return redisClient.ttl(keyRedis) > 0;
   };
-  if (!keyRedisIsValid) return next(new AppError('Token is not valid'));
+  if (!keyRedisIsValid) return next(new AppError("Token is not valid"));
   const currentUser = await User.findByPk(decoded.id);
   if (!currentUser) {
     return next(
-      new AppError('The user belonging to this token does no longer exit'),
+      new AppError("The user belonging to this token does no longer exit")
     );
   }
   req.userId = currentUser.user_id;
@@ -133,7 +133,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 exports.prevent = catchAsync(async (req, res, next) => {
   sessionId = req.params.token;
   if (sessionIsValid(sessionId) == false) {
-    return next(new AppError('session is invalid'));
+    return next(new AppError("session is invalid"));
   }
   const token = await redisClient.get(`${user_id}:${sessionId}:jwt`);
   console.log(token);
@@ -141,7 +141,7 @@ exports.prevent = catchAsync(async (req, res, next) => {
   const currentUser = await User.findByPk(decoded.id);
   if (!currentUser) {
     return next(
-      new AppError('The user belonging to this token does no longer exit'),
+      new AppError("The user belonging to this token does no longer exit")
     );
   }
   req.user = currentUser;
@@ -154,36 +154,36 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   });
 
   if (!user) {
-    return next(new AppError('There is no user with email address', 404));
+    return next(new AppError("There is no user with email address", 404));
   }
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
   const resetURL = `${req.protocol}://${req.get(
-    'host',
+    "host"
   )}/api/v1/user/resetPassword/${resetToken}`;
 
   await sendEmail({
     email: user.email,
-    subject: 'forgot password',
+    subject: "forgot password",
     message: resetURL,
   });
   res.status(200).json({
-    status: 'success',
-    message: 'Token sent to email',
+    status: "success",
+    message: "Token sent to email",
   });
 });
 
 exports.resetPassword = catchAsync(async (req, res, next) => {
   const hashedToken = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(req.params.token)
-    .digest('hex');
+    .digest("hex");
   const user = await User.findOne({
     where: { password_reset_token: hashedToken },
   });
 
   if (!user) {
-    return next(new AppError('Token invalid or has expired', 400));
+    return next(new AppError("Token invalid or has expired", 400));
   }
 
   user.password = req.body.password;
@@ -192,29 +192,50 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     password_reset_expired = user.password_reset_expired;
     return password_reset_expired.getTime() > timeNow.getTime();
   };
-  if (!validToken()) return next(new AppError('Token is invalid or expired'));
+  if (!validToken()) return next(new AppError("Token is invalid or expired"));
 
-  user.setDataValue('password_reset_token', null);
-  user.setDataValue('password_reset_expired', null);
+  user.setDataValue("password_reset_token", null);
+  user.setDataValue("password_reset_expired", null);
   await user.save({ validateBeforeSave: false });
   createSendToken(user, 200, res);
 });
 
+// exports.updatePassword = catchAsync(async (req, res, next) => {
+//   const {  pá } = req.body;
+//   const userId = req.params.id;
+//   const user = await User.findByPk(userId);
+//   if (!user) {
+//     return next(new AppError("Can not find account", 400));
+//   }
+//   user.password = newPassword;
+//   await user.save();
+//   createSendToken(user, 200, res);
+// });
+
 exports.updatePassword = catchAsync(async (req, res, next) => {
-  const { password, newPassword } = req.body;
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
+  const user = await User.findOne({
+    where: { password_reset_token: hashedToken },
+  });
 
-  const user = await User.findByPk(req.user.user_id);
   if (!user) {
-    return next(new AppError('Can not find account', 400));
+    return next(new AppError("Token invalid or has expired", 400));
   }
 
-  const checkPassword = await bcrypt.compare(password, user.password);
-  if (!checkPassword) {
-    return next(new AppError('Password is incorrect'));
-  }
+  user.password = req.body.password;
+  const validToken = () => {
+    const timeNow = new Date();
+    password_reset_expired = user.password_reset_expired;
+    return password_reset_expired.getTime() > timeNow.getTime();
+  };
+  if (!validToken()) return next(new AppError("Token is invalid or expired"));
 
-  user.password = newPassword;
-  await user.save();
+  user.setDataValue("password_reset_token", null);
+  user.setDataValue("password_reset_expired", null);
+  await user.save({ validateBeforeSave: false });
   createSendToken(user, 200, res);
 });
 
@@ -222,39 +243,83 @@ exports.logout = catchAsync(async (req, res, next) => {
   let token;
   if (
     req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
+    req.headers.authorization.startsWith("Bearer")
   ) {
-    token = req.headers.authorization.split(' ')[1];
+    token = req.headers.authorization.split(" ")[1];
   }
   if (!token) {
-    return next(new AppError('invalid token'));
+    return next(new AppError("invalid token"));
   }
   const decode = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
   const user_id = decode.id;
-  if (req.params.type == 'All') {
+  if (req.params.type == "All") {
     deleteKeyRedis(`${user_id}:jwt*`);
     res.status(200).json({
-      status: 'Done',
-      message: 'All device has been logout',
+      status: "Done",
+      message: "All device has been logout",
     });
   }
   deleteKeyRedis(`${user_id}:jwt:${token}`);
   res.status(200).json({
-    status: 'Done',
-    message: 'Account has been logout',
+    status: "Done",
+    message: "Account has been logout",
   });
-  
 });
 
+exports.updateProdfile = catchAsync(async (req, res, next) => {
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
+  const user = await User.findOne({
+    where: { password_reset_token: hashedToken },
+  });
+
+  if (!user) {
+    return next(new AppError("Token invalid or has expired", 400));
+  }
+
+  const allowedFields = [
+    "email",
+    "full_name",
+    "phone_number",
+    "address",
+    "gender",
+    "birth_date",
+    "role",
+  ];
+
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      user.setDataValue(field, req.body[field]);
+    }
+  });
+  user.setDataValue("password_reset_token", null);
+  user.setDataValue("password_reset_expired", null);
+  await user.save({ validateBeforeSave: false });
+  res.status(200).json({
+    status: "success",
+    message: "Profile updated successfully",
+    data: {
+      user,
+    },
+  });
+});
+
+exports.deleteUser = catchAsync(async (req, res, next) => {});
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
     // Giả sử user đã được gán vào req.userId ở middleware protect
-    User.findByPk(req.userId).then(user => {
-      if (!user || !roles.includes(user.role)) {
-        return next(new AppError('Bạn không có quyền truy cập chức năng này!', 403));
-      }
-      next();
-    }).catch(err => next(err));
+    User.findByPk(req.userId)
+      .then((user) => {
+        if (!user || !roles.includes(user.role)) {
+          return next(
+            new AppError("Bạn không có quyền truy cập chức năng này!", 403)
+          );
+        }
+        next();
+      })
+      .catch((err) => next(err));
   };
 };
 
@@ -270,16 +335,20 @@ exports.registerAdmin = catchAsync(async (req, res, next) => {
     address,
     role: role
   });
-  res.status(201).json({ status: 'success', data: user });
+  res.status(201).json({ status: "success", data: user });
 });
 
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
-    User.findByPk(req.userId).then(user => {
-      if (!user || !roles.includes(user.role)) {
-        return next(new AppError('Bạn không có quyền truy cập chức năng này!', 403));
-      }
-      next();
-    }).catch(err => next(err));
+    User.findByPk(req.userId)
+      .then((user) => {
+        if (!user || !roles.includes(user.role)) {
+          return next(
+            new AppError("Bạn không có quyền truy cập chức năng này!", 403)
+          );
+        }
+        next();
+      })
+      .catch((err) => next(err));
   };
 };

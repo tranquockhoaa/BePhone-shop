@@ -143,7 +143,7 @@ exports.forgotPassword = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-  const {code, newPassword } = req.body;
+   const { email, code, newPassword } = req.body;
   try {
     const user = req.user;
 
@@ -155,8 +155,8 @@ exports.resetPassword = async (req, res) => {
     if (storedCode !== code)
       return res.status(400).json({ error: "Mã code không đúng" });
 
-    const userUpdate = await User.findOne({ where: { email: user.email } });
-    if (!userUpdate) return res.status(404).json({ error: "User không tồn tại" });
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(404).json({ error: 'User không tồn tại' });
 
     user.password = newPassword;
     await user.save();
@@ -166,52 +166,6 @@ exports.resetPassword = async (req, res) => {
     res.json({ message: "Đổi mật khẩu thành công" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Lỗi server" });
-  }
-};
-
-exports.changePassword = async (req, res) => {
-  try {
-    const userReq = req.user;
-    const { oldPassword, newPassword } = req.body;
-
-    const user = await User.findByPk(userReq.user_id);
-
-   if(!user) {
-    return res.status(400).json({
-      status: "error",
-      message: "Không tìm thấy người dùng"
-    })
-   }
-
-    if (!oldPassword || !newPassword) {
-      return res.status(400).json({
-        error: 'Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới.',
-      });
-    }
-
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({
-        error: 'Mật khẩu cũ không chính xác.',
-      });
-    }
-
-    const isSame = await bcrypt.compare(newPassword, user.password);
-    if (isSame) {
-      return res.status(400).json({
-        error: 'Mật khẩu mới không được trùng với mật khẩu cũ.',
-      });
-    }
-
-    user.password = newPassword; 
-    await user.save();
-
-    res.status(200).json({
-      message: 'Đổi mật khẩu thành công.',
-    });
-  } catch (error) {
-    console.error('Lỗi khi đổi mật khẩu:', error);
-    res.status(500).json({ error: 'Lỗi server.' });
+    res.status(500).json({ error: 'Lỗi server' });
   }
 };

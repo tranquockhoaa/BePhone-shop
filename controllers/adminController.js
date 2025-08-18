@@ -9,6 +9,7 @@ const Media = require("../models/media");
 
 const { Op, fn, col, literal } = require("sequelize");
 const catchAsync = require("../utils/catchAsync");
+const AppError = require("../utils/appError");
 
 // GET /api/v1/admin/products
 exports.getAllProducts = catchAsync(async (req, res, next) => {
@@ -673,4 +674,108 @@ exports.updateProductDetail = catchAsync(async (req, res, next) => {
   });
 
   res.status(200).json({ status: "success", data: productDetail });
+});
+
+exports.updateProdfileUser = catchAsync(async (req, res, next) => {
+  const id = req.params.id;
+
+  const user = await User.findByPk(id);
+
+  if (!user) {
+    return next(new AppError("Không tìm thấy người dùng", 400));
+  }
+
+  const allowedFields = [
+    "email",
+    "full_name",
+    "phone_number",
+    "address",
+    "gender",
+    "birth_date",
+    "role",
+  ];
+
+  allowedFields.forEach((field) => {
+    if (req.body[field] !== undefined) {
+      user.setDataValue(field, req.body[field]);
+    }
+  });
+
+  const { password, ...dataUser } = user.toJSON();
+
+  await user.save({ validateBeforeSave: false });
+  res.status(200).json({
+    status: "success",
+    message: "Cập nhật thông tin tài khoản thành công",
+    data: {
+      dataUser,
+    },
+  });
+});
+
+exports.deleteUser = catchAsync(async (req, res, next) => {
+  const id = req.params.id;
+  const user = await User.findByPk(id);
+  if (!user) {
+    return next(new AppError("Không tìm thấy người dùng", 400));
+  }
+  const currentUserId = req.userId;
+  console.log(currentUserId);
+  if (currentUserId === user.user_id) {
+    return next(new AppError("Không thể xóa chính tài khoản của mình", 400));
+  }
+  await user.update({ status: "INACTIVE" });
+  return res.status(204).json({
+    status: "success",
+    message: "Tài khoản đã được xóa thành công",
+  });
+});
+
+exports.filterUsersByRole = catchAsync(async (req, res, next) => {
+  try {
+    const {
+      role,
+      search,
+      page = 1,
+      size = 10,
+      sortBy = "createdAt",
+      sortOrder = "ASC",
+    } = req.query;
+
+    const limit = parseInt(size);
+    const offset = (parseInt(page) - 1) * limit;
+
+    let condition = {};
+    if (role) condition.role = role;
+    if (search) {
+      condition[Op.or] = [
+        { email: { [Op.iLike]: `%${search}%` } },
+        { phone_number: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+    const users = await User.findAndCountAll({
+      where: { ...condition, status: "ACTIVE" },
+      attributes: { exclude: ["password", "password_reset_token"] },
+      order: [[sortBy, sortOrder.toUpperCase()]],
+      limit,
+      offset,
+    });
+
+    if (!users.rows.length) {
+      return res.status(404).json({
+        status: "error",
+        message: "Không có user nào",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      totalItems: users.count,
+      totalPages: Math.ceil(users.count / limit),
+      currentPage: parseInt(page),
+      data: users.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
 });

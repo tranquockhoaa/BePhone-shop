@@ -1,9 +1,11 @@
 const User = require("./../models/user");
 const UserService = require("./../service/userService");
 const redisClient = require("./../config/redis");
+const bcrypt = require("bcryptjs")
 const { sendVerificationEmail } = require("../service/emailService");
 
 const catchAsync = require("./../utils/catchAsync");
+const { json } = require("sequelize");
 
 function generateCode(length = 6) {
   const chars =
@@ -126,14 +128,12 @@ exports.updateAvatar = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
-  const code = generateCode();
-
   try {
-    const user = await User.findOne({ where: { email } });
+    const code = generateCode();
+    const user = req.user;
     if (!user) return res.status(404).json({ error: "User không tồn tại" });
-    await sendVerificationEmail(email, code);
-    await redisClient.setEx(email, 300, code);
+    await sendVerificationEmail(user.email, code);
+    await redisClient.setEx(user.email, 300, code);
 
     res.json({ message: "Mã xác nhận đã được gửi đến email." });
   } catch (err) {
@@ -143,8 +143,10 @@ exports.forgotPassword = async (req, res) => {
 };
 
 exports.resetPassword = async (req, res) => {
-  const { email, code, newPassword } = req.body;
+   const { email, code, newPassword } = req.body;
   try {
+    const user = req.user;
+
     const storedCode = await redisClient.get(email);
     if (!storedCode)
       return res
@@ -154,7 +156,7 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: "Mã code không đúng" });
 
     const user = await User.findOne({ where: { email } });
-    if (!user) return res.status(404).json({ error: "User không tồn tại" });
+    if (!user) return res.status(404).json({ error: 'User không tồn tại' });
 
     user.password = newPassword;
     await user.save();
@@ -164,6 +166,6 @@ exports.resetPassword = async (req, res) => {
     res.json({ message: "Đổi mật khẩu thành công" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Lỗi server" });
+    res.status(500).json({ error: 'Lỗi server' });
   }
 };

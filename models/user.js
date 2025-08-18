@@ -74,6 +74,11 @@ const User = sequelize.define(
     password_reset_expired: {
       type: DataTypes.DATE,
     },
+    status :{
+      type: DataTypes.ENUM("ACTIVE", "INACTIVE"),
+      allowNull: false,
+      defaultValue: 'ACTIVE',
+    }
   },
   {
     timestamps: true,

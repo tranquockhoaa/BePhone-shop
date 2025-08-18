@@ -1,3 +1,4 @@
+// const OrderItem = require("./orderItem");
 const { DataTypes } = require("sequelize");
 const sequelize = require("./../config/database");
 const User = require("./user");
@@ -42,11 +43,12 @@ const Order = sequelize.define(
 
     status: {
       type: DataTypes.ENUM(
-        "PENDING",
-        "CONFIRMED",
-        "SHIPPED",
-        "DELIVERED",
-        "CANCELLED"
+        "PENDING", // Chờ xử lý
+        "CONFIRMED", // Đã xác nhận
+        "SHIPPING", // Đang giao hàng
+        "DELIVERED", // Đã giao hàng
+        "CANCELLED",
+        "INACTIVE" // XOÁ
       ),
       defaultValue: "PENDING",
     },
@@ -68,5 +70,6 @@ Order.belongsTo(User, {
   foreignKey: "user_id",
   as: "user",
 });
+
 
 module.exports = Order;

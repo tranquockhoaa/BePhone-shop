@@ -1,8 +1,10 @@
 const orderService = require("../service/orderService");
 const Order = require("../models/orders");
 const OrderItem = require("../models/orderItem");
+const ProductDetail = require("../models/productDetails");
 const catchAsync = require("../utils/catchAsync");
 const sequelize = require("./../config/database");
+const { sendPaymentSuccessEmail } = require("../service/emailService");
 
 const {
   VNPay,
@@ -11,6 +13,7 @@ const {
   VnpLocale,
   dateFormat,
 } = require("vnpay");
+const { User } = require("../models");
 
 function generateRandomTxnRef(length = 10) {
   const chars =
@@ -21,6 +24,26 @@ function generateRandomTxnRef(length = 10) {
   }
   return result;
 }
+
+const formatVNDate = (vnpPayDate) => {
+  // Chuỗi vnp_PayDate có định dạng: "yyyyMMddHHmmss"
+  const year = vnpPayDate.substring(0, 4);
+  const month = vnpPayDate.substring(4, 6);
+  const day = vnpPayDate.substring(6, 8);
+  const hour = vnpPayDate.substring(8, 10);
+  const minute = vnpPayDate.substring(10, 12);
+  const second = vnpPayDate.substring(12, 14);
+
+  return `${day}/${month}/${year} ${hour}:${minute}:${second}`;
+};
+
+const formatCurrencyVND = (amount) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount);
+};
+
 exports.createPayment = async (req, res) => {
   try {
     const t = await sequelize.transaction();
@@ -28,7 +51,6 @@ exports.createPayment = async (req, res) => {
       products,
       full_name,
       phone_number,
-      email,
       address,
       total_amount,
       payment_method,
@@ -36,7 +58,7 @@ exports.createPayment = async (req, res) => {
     const user = req.user;
     const txn = generateRandomTxnRef();
 
-    if (!full_name || !phone_number || !email || !address || !total_amount) {
+    if (!full_name || !phone_number || !address || !total_amount) {
       return res.status(400).json({
         status: "error",
         message: "Thiếu thông tin thanh toán",
@@ -48,7 +70,7 @@ exports.createPayment = async (req, res) => {
         code: txn,
         full_name,
         phone_number,
-        email,
+        email: user.email,
         address,
         total_amount,
         payment_method,
@@ -73,29 +95,51 @@ exports.createPayment = async (req, res) => {
 
     await t.commit();
 
-    const vnpay = new VNPay({
-      tmnCode: process.env.TMN_CODE,
-      secureSecret: process.env.SECURE_SECRET,
-      vnpayHost: "https://sandbox.vnpayment.vn",
-      testMode: true,
-      hashAlgorithm: "SHA512",
-      loggerFn: ignoreLogger,
-    });
+    if (payment_method === "VNPAY") {
+      const vnpay = new VNPay({
+        tmnCode: process.env.TMN_CODE,
+        secureSecret: process.env.SECURE_SECRET,
+        vnpayHost: "https://sandbox.vnpayment.vn",
+        testMode: true,
+        hashAlgorithm: "SHA512",
+        loggerFn: ignoreLogger,
+      });
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const vnpayResponse = await vnpay.buildPaymentUrl({
-      vnp_Amount: total_amount,
-      vnp_IpAddr: "127.0.0.1",
-      vnp_TxnRef: txn,
-      vnp_OrderInfo: `Thanh toán đơn hàng ${txn}`,
-      vnp_OrderType: ProductCode.Other,
-      vnp_ReturnUrl: "http://localhost:3000/api/v1/order/check-payment-vnpay",
-      vnp_CreateDate: dateFormat(new Date()),
-      vnp_ExpireDate: dateFormat(tomorrow),
-    });
-
-    return res.status(200).json(vnpayResponse);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const vnpayResponse = await vnpay.buildPaymentUrl({
+        vnp_Amount: total_amount,
+        vnp_IpAddr: "127.0.0.1",
+        vnp_TxnRef: txn,
+        vnp_OrderInfo: `Thanh toán đơn hàng ${txn}`,
+        vnp_OrderType: ProductCode.Other,
+        vnp_ReturnUrl: "http://localhost:3000/api/v1/order/check-payment-vnpay",
+        vnp_CreateDate: dateFormat(new Date()),
+        vnp_ExpireDate: dateFormat(tomorrow),
+      });
+      return res.status(200).json(vnpayResponse);
+    } else {
+      await sendPaymentSuccessEmail("ductmhe160745@fpt.edu.vn", {
+        title: "Đặt hàng thành công",
+        message: "Cảm ơn bạn đã đặt hàng! Đơn hàng  của bạn đang được xử lý",
+        customerName: full_name,
+        code: txn,
+        amount: formatCurrencyVND(total_amount),
+        paymentDate: new Date().toLocaleString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour12: false,
+          timeZone: "Asia/Ho_Chi_Minh",
+        }),
+      });
+      return res.status(200).json({
+        status: "success",
+        message: "Đặt đơn thàng thành công",
+      });
+    }
   } catch (error) {
     return res.status(500).json({
       status: "error",
@@ -107,8 +151,6 @@ exports.createPayment = async (req, res) => {
 
 exports.checkPayment = async (req, res) => {
   try {
-
-    const user = req.user;
     const vnpay = new VNPay({
       tmnCode: "2BXC2ONJ",
       secureSecret: "1D2V0ZMGB3SFFGHBC2DWI065E1W1POIV",
@@ -129,6 +171,8 @@ exports.checkPayment = async (req, res) => {
     const responseCode = req.query.vnp_ResponseCode;
     const transactionStatus = req.query.vnp_TransactionStatus;
     const txnRef = req.query.vnp_TxnRef;
+    const payDate = req.query.vnp_PayDate;
+    const formattedPayDate = formatVNDate(payDate);
 
     const order = await Order.findOne({
       where: { code: txnRef },
@@ -149,6 +193,21 @@ exports.checkPayment = async (req, res) => {
       } else {
         console.log("Đơn hàng đã được xác nhận từ trước, không cập nhật lại.");
       }
+
+      const user = User.findByPk(order.user_id);
+      if (!user) {
+        return res.status(404).json({
+          status: "fail",
+          message: "user không tồn tại",
+        });
+      }
+
+      await sendPaymentSuccessEmail(user.email, {
+        customerName: order.full_name,
+        code: order.code,
+        amount: formatCurrencyVND(order.total_amount),
+        paymentDate: formattedPayDate,
+      });
       return res.status(200).json({
         status: "success",
         message: "Giao dịch thành công",
@@ -183,50 +242,146 @@ exports.checkPayment = async (req, res) => {
   }
 };
 
-exports.createOrder = catchAsync(async (req, res, next) => {
-  const userId = req.userId; // Lấy từ middleware xác thực
-  const { name, phone, email, note, address } = req.body;
-  if (!name || !phone || !address) {
-    return res
-      .status(400)
-      .json({ status: "fail", message: "Thiếu thông tin đặt hàng!" });
+exports.getAllOrder = catchAsync(async (req, res, next) => {
+  try {
+    const user = req.user;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      full_name,
+      phone_number,
+      email,
+      address,
+      payment_method,
+      sortBy = "createdAt",
+      sortOrder = "ASC",
+    } = req.query;
+
+    const allowedSortFields = [
+      "createdAt",
+      "total_amount",
+      "status",
+      "phone_number",
+      "payment_method",
+    ];
+    const allowedSortOrders = ["ASC", "DESC"];
+
+    const finalSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "createdAt";
+    const finalSortOrder = allowedSortOrders.includes(sortOrder.toUpperCase())
+      ? sortOrder.toUpperCase()
+      : "ASC";
+
+    const whereConditions = {
+      user_id: user.user_id,
+    };
+
+    if (status) whereConditions.status = status;
+    if (full_name) whereConditions.full_name = { [Op.like]: `%${full_name}%` };
+    if (phone_number)
+      whereConditions.phone_number = { [Op.like]: `%${phone_number}%` };
+    if (email) whereConditions.email = { [Op.like]: `%${email}%` };
+    if (address) whereConditions.address = { [Op.like]: `%${address}%` };
+    if (payment_method) whereConditions.payment_method = payment_method;
+
+    const { count, rows } = await Order.findAndCountAll({
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+      ],
+      where: whereConditions,
+      limit: +limit,
+      offset: (+page - 1) * +limit,
+      order: [[finalSortBy, finalSortOrder]],
+    });
+
+    res.status(200).json({
+      status: "success",
+      total: count,
+      data: rows,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      error: error.message,
+    });
   }
-  const { order, orderItems } = await orderService.createOrderFromCart(userId, {
-    full_name: name,
-    phone_number: phone,
-    email,
-    address,
-    note,
-  });
-  res.status(200).json({ status: "success", order, orderItems });
 });
 
-// Lấy tất cả đơn hàng (admin)
-exports.getAllOrders = catchAsync(async (req, res, next) => {
-  const orders = await Order.findAll({ order: [["createdAt", "DESC"]] });
-  res.status(200).json({ status: "success", data: orders });
+exports.getOrderDetails = catchAsync(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    const orderData = await Order.findOne({
+      where: { order_id: id , user_id: user.user_id },
+      include: [
+        {
+          model: User,
+          as: "user",
+        },
+        {
+          model: OrderItem,
+          as: "order_items",
+          include: [
+            {
+              model: ProductDetail,
+              as: "product_details",
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!orderData) {
+      return res.status(404).json({
+        status: "error",
+        message: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: orderData,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      error: error.message,
+    });
+  }
 });
 
-// Lấy chi tiết đơn hàng (admin)
-exports.getOrderById = catchAsync(async (req, res, next) => {
-  const order = await Order.findByPk(req.params.id, {
-    include: [{ model: OrderItem }],
-  });
-  if (!order)
-    return res
-      .status(404)
-      .json({ status: "fail", message: "Không tìm thấy đơn hàng" });
-  res.status(200).json({ status: "success", data: order });
-});
 
-// Cập nhật trạng thái đơn hàng (admin)
-exports.updateOrderStatus = catchAsync(async (req, res, next) => {
-  const order = await Order.findByPk(req.params.id);
-  if (!order)
-    return res
-      .status(404)
-      .json({ status: "fail", message: "Không tìm thấy đơn hàng" });
-  order.status = req.body.status;
-  await order.save();
-  res.status(200).json({ status: "success", data: order });
+exports.updateOrder = catchAsync(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const user = req.user;
+
+    const order = await Order.findOne({ where: { order_id: id, user_id: user.user_id } });
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ status: "fail", message: "Order not found" });
+    }
+
+    order.status = status;
+    await order.save();
+
+    res.status(200).json({
+      status: "success",
+      message: `Order status updated to ${status}`,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      error: error.message,
+    });
+  }
 });

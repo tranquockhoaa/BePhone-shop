@@ -1,10 +1,11 @@
-const CartDetailService = require("./../service/cartDetailService");
 const CartDetail = require("../models/cartDetail");
 const Cart = require("./../models/cart");
 const ProductDetail = require("./../models/productDetails");
 const Product = require("./../models/product");
 const Brand = require("./../models/brand");
 const Memory = require("./../models/memory");
+const Color = require("./../models/color");
+
 const catchAsync = require("./../utils/catchAsync");
 
 const calculateCartTotal = async (cart_id) => {
@@ -62,6 +63,10 @@ exports.getCartDetails = catchAsync(async (req, res, next) => {
             model: Memory,
             as: "memory",
           },
+          {
+            model: Color,
+            as: "color"
+          }
         ],
       },
     ],

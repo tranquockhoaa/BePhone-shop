@@ -16,7 +16,7 @@ exports.createProductDetail = async (req, res) => {
       memory_id,
     } = req.body;
 
-    if (!price || !quantity || !sku || !specifications) {
+    if (!price || !quantity || !specifications) {
       return res.status(400).json({
         status: "error",
         message: "Thiếu các trường bắt buộc",

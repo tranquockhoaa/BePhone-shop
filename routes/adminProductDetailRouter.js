@@ -3,7 +3,7 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const adminProductDetailController = require('../controllers/adminProductDetail');
 
-// router.use(authController.protect, authController.restrictTo('admin'));
+router.use(authController.protect, authController.restrictTo('admin'));
 
 router.get('/', adminProductDetailController.getAllProductDetail)
 router.post('/create', adminProductDetailController.createProductDetail)

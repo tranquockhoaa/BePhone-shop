@@ -42,9 +42,11 @@ const Product = sequelize.define(
   }
 );
 
+
 Product.belongsTo(Brand, {
   foreignKey: "brand_id",
   as: "brand",
 });
+
 
 module.exports = Product;

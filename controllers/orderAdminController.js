@@ -12,10 +12,8 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       page = 1,
       limit = 10,
       status,
-      full_name,
-      phone_number,
-      email,
-      address,
+
+      search,
       payment_method,
       sortBy = "createdAt",
       sortOrder = "ASC",
@@ -40,12 +38,18 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
     const whereConditions = {};
 
     if (status) whereConditions.status = status;
-    if (full_name) whereConditions.full_name = { [Op.like]: `%${full_name}%` };
-    if (phone_number)
-      whereConditions.phone_number = { [Op.like]: `%${phone_number}%` };
-    if (email) whereConditions.email = { [Op.like]: `%${email}%` };
-    if (address) whereConditions.address = { [Op.like]: `%${address}%` };
+
     if (payment_method) whereConditions.payment_method = payment_method;
+
+    if (search) {
+      whereConditions[Op.or] = [
+        { full_name: { [Op.like]: `%${search}%` } },
+        { phone_number: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { address: { [Op.like]: `%${search}%` } },
+        { code: { [Op.like]: `%${search}%` } },
+      ];
+    }
 
     const { count, rows } = await Order.findAndCountAll({
       include: [

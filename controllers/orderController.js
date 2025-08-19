@@ -2,6 +2,12 @@ const orderService = require("../service/orderService");
 const Order = require("../models/orders");
 const OrderItem = require("../models/orderItem");
 const ProductDetail = require("../models/productDetails");
+const Product = require("../models/product");
+const Memory = require("../models/memory");
+const Color = require("../models/color");
+
+
+
 const catchAsync = require("../utils/catchAsync");
 const sequelize = require("./../config/database");
 const { sendPaymentSuccessEmail } = require("../service/emailService");
@@ -293,6 +299,30 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
           model: User,
           as: "user",
         },
+        {
+          model: OrderItem,
+          as: "order_items",
+          include: [
+            {
+              model: ProductDetail,
+              as: "product_details",
+              include: [
+                {
+                  model: Product,
+                  as: "product",
+                },
+                {
+                  model: Memory,
+                  as: "memory",
+                },
+                 {
+                  model: Color,
+                  as: "color",
+                },
+              ],
+            },
+          ],
+        },
       ],
       where: whereConditions,
       limit: +limit,
@@ -332,6 +362,20 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
             {
               model: ProductDetail,
               as: "product_details",
+               include: [
+                {
+                  model: Product,
+                  as: "product",
+                },
+                {
+                  model: Memory,
+                  as: "memory",
+                },
+                 {
+                  model: Color,
+                  as: "color",
+                },
+              ],
             },
           ],
         },

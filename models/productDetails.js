@@ -37,11 +37,10 @@ const ProductDetails = sequelize.define(
     },
     color_id: {
       type: DataTypes.INTEGER,
-       references: {
+      references: {
         model: "colors",
         key: "color_id",
       },
-
     },
     sku: {
       type: DataTypes.STRING,
@@ -80,7 +79,6 @@ ProductDetails.belongsTo(Memory, {
   foreignKey: "memory_id",
   as: "memory",
 });
-
 
 ProductDetails.belongsTo(Color, {
   foreignKey: "color_id",

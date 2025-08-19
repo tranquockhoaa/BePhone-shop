@@ -12,8 +12,9 @@ exports.createProductDetail = async (req, res) => {
       discount,
       sku,
       specifications,
-      product_id,
-      memory_id,
+      productId,
+      ramSize,
+      storageSize,
     } = req.body;
 
     if (!price || !quantity || !specifications) {
@@ -22,14 +23,18 @@ exports.createProductDetail = async (req, res) => {
         message: "Thiếu các trường bắt buộc",
       });
     }
+
+    const product_id = parseInt(productId);
     const newProductDetail = await ProductDetail.create({
       price,
       quantity,
       discount,
       sku,
       specifications,
-      product_id,
-      memory_id,
+      product_id: product_id,
+      ramSize,
+      storageSize,
+      memory_id: 1,
       status: "ACTIVE",
     });
 

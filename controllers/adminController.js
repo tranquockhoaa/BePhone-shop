@@ -266,7 +266,12 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       });
     }
 
-    const checkProduct = await Product.findOne({ where: { sku: sku } });
+  const checkProduct = await Product.findOne({ 
+  where: { 
+    sku: sku,
+    product_id: { [Op.ne]: id } 
+  } 
+});
 
     if (checkProduct) {
       return res.status(400).json({

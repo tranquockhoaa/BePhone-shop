@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("./../config/database");
 const Product = require("./product");
 const Memory = require("./memory");
+const Color = require("./color");
 const ProductDetails = sequelize.define(
   "product_details",
   {
@@ -33,6 +34,14 @@ const ProductDetails = sequelize.define(
       //     return raw;
       //   }
       // },
+    },
+    color_id: {
+      type: DataTypes.INTEGER,
+       references: {
+        model: "colors",
+        key: "color_id",
+      },
+
     },
     sku: {
       type: DataTypes.STRING,
@@ -70,5 +79,11 @@ ProductDetails.belongsTo(Product, {
 ProductDetails.belongsTo(Memory, {
   foreignKey: "memory_id",
   as: "memory",
+});
+
+
+ProductDetails.belongsTo(Color, {
+  foreignKey: "color_id",
+  as: "color",
 });
 module.exports = ProductDetails;

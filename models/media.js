@@ -15,7 +15,7 @@ const Media = sequelize.define(
       allowNull: false,
     },
     data: {
-      type: DataTypes.BLOB('long'), 
+      type: DataTypes.TEXT('long'), 
     },
     mimetype: {
       type: DataTypes.STRING, 

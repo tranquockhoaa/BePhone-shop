@@ -12,12 +12,11 @@ exports.createProductDetail = async (req, res) => {
       discount,
       sku,
       specifications,
-      image,
       product_id,
       memory_id,
     } = req.body;
 
-    if (!price || !quantity || !sku || !specifications || !image) {
+    if (!price || !quantity || !sku || !specifications) {
       return res.status(400).json({
         status: "error",
         message: "Thiếu các trường bắt buộc",
@@ -29,7 +28,6 @@ exports.createProductDetail = async (req, res) => {
       discount,
       sku,
       specifications,
-      image,
       product_id,
       memory_id,
       status: "ACTIVE",

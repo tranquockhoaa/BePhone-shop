@@ -113,13 +113,13 @@ exports.createPayment = async (req, res) => {
         vnp_TxnRef: txn,
         vnp_OrderInfo: `Thanh toán đơn hàng ${txn}`,
         vnp_OrderType: ProductCode.Other,
-        vnp_ReturnUrl: "http://localhost:3000/api/v1/order/check-payment-vnpay",
+        vnp_ReturnUrl: "http://localhost:5173/payment/success",
         vnp_CreateDate: dateFormat(new Date()),
         vnp_ExpireDate: dateFormat(tomorrow),
       });
       return res.status(200).json(vnpayResponse);
     } else {
-      await sendPaymentSuccessEmail("ductmhe160745@fpt.edu.vn", {
+      await sendPaymentSuccessEmail(user.email, {
         title: "Đặt hàng thành công",
         message: "Cảm ơn bạn đã đặt hàng! Đơn hàng  của bạn đang được xử lý",
         customerName: full_name,
@@ -194,7 +194,7 @@ exports.checkPayment = async (req, res) => {
         console.log("Đơn hàng đã được xác nhận từ trước, không cập nhật lại.");
       }
 
-      const user = User.findByPk(order.user_id);
+      const user = await User.findByPk(order.user_id);
       if (!user) {
         return res.status(404).json({
           status: "fail",
@@ -249,10 +249,7 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
       page = 1,
       limit = 10,
       status,
-      full_name,
-      phone_number,
-      email,
-      address,
+      search,
       payment_method,
       sortBy = "createdAt",
       sortOrder = "ASC",
@@ -279,13 +276,17 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
     };
 
     if (status) whereConditions.status = status;
-    if (full_name) whereConditions.full_name = { [Op.like]: `%${full_name}%` };
-    if (phone_number)
-      whereConditions.phone_number = { [Op.like]: `%${phone_number}%` };
-    if (email) whereConditions.email = { [Op.like]: `%${email}%` };
-    if (address) whereConditions.address = { [Op.like]: `%${address}%` };
-    if (payment_method) whereConditions.payment_method = payment_method;
 
+    if (payment_method) whereConditions.payment_method = payment_method;
+    if (search) {
+      whereConditions[Op.or] = [
+        { full_name: { [Op.like]: `%${search}%` } },
+        { phone_number: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { address: { [Op.like]: `%${search}%` } },
+        { code: { [Op.like]: `%${search}%` } },
+      ];
+    }
     const { count, rows } = await Order.findAndCountAll({
       include: [
         {
@@ -318,7 +319,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
     const user = req.user;
 
     const orderData = await Order.findOne({
-      where: { order_id: id , user_id: user.user_id },
+      where: { order_id: id, user_id: user.user_id },
       include: [
         {
           model: User,
@@ -356,14 +357,15 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
   }
 });
 
-
 exports.updateOrder = catchAsync(async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
     const user = req.user;
 
-    const order = await Order.findOne({ where: { order_id: id, user_id: user.user_id } });
+    const order = await Order.findOne({
+      where: { order_id: id, user_id: user.user_id },
+    });
 
     if (!order) {
       return res

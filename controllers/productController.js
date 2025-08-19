@@ -10,16 +10,13 @@ const { Op } = require("sequelize");
 exports.getAllProducts = catchAsync(async (req, res, next) => {
   try {
     const {
-      name = "",
-      code = "",
-      description = "",
       brand_id = "",
-      sku = "",
       status = "",
       sortBy = "createdAt",
       sortOrder = "ASC",
       page = 1,
       size = 10,
+      search,
     } = req.query;
 
     const limit = parseInt(size);
@@ -28,14 +25,18 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     const whereClause = {
       status: "ACTIVE",
     };
-    if (name) whereClause.name = { [Op.iLike]: `%${name}%` };
-    if (code) whereClause.code = { [Op.iLike]: `%${code}%` };
-    if (description)
-      whereClause.description = { [Op.iLike]: `%${description}%` };
-    if (sku) whereClause.sku = { [Op.iLike]: `%${sku}%` };
+
     if (status) whereClause.status = status;
     if (brand_id) whereClause.brand_id = brand_id;
 
+    if (search) {
+      whereClause[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { code: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
+        { sku: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
     const allowedSortFields = [
       "createdAt",
       "updatedAt",

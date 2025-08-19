@@ -266,9 +266,9 @@ exports.updateProductDetail = async (req, res) => {
       discount,
       sku,
       specifications,
-      image,
       product_id,
       memory_id,
+      color_id,
       status,
     } = req.body;
 
@@ -285,9 +285,9 @@ exports.updateProductDetail = async (req, res) => {
       discount,
       sku,
       specifications,
-      image,
       product_id,
       memory_id,
+      color_id,
       status,
     });
 

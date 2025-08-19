@@ -15,11 +15,9 @@ const AppError = require("../utils/appError");
 exports.getAllProducts = catchAsync(async (req, res, next) => {
   try {
     const {
-      name = "",
-      code = "",
-      description = "",
+
+      search,
       brand_id = "",
-      sku = "",
       status = "",
       sortBy = "createdAt",
       sortOrder = "ASC",
@@ -31,14 +29,16 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     const offset = (parseInt(page) - 1) * limit;
 
     const whereClause = {};
-    if (name) whereClause.name = { [Op.iLike]: `%${name}%` };
-    if (code) whereClause.code = { [Op.iLike]: `%${code}%` };
-    if (description)
-      whereClause.description = { [Op.iLike]: `%${description}%` };
-    if (sku) whereClause.sku = { [Op.iLike]: `%${sku}%` };
     if (status) whereClause.status = status;
     if (brand_id) whereClause.brand_id = brand_id;
-
+    if (search) {
+      whereClause[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } }, 
+        { code: { [Op.iLike]: `%${search}%` } }, 
+        { description: { [Op.iLike]: `%${search}%` } },
+        { sku: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
     const allowedSortFields = [
       "createdAt",
       "updatedAt",
@@ -53,16 +53,31 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     const sort = sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
 
     const products = await Product.findAndCountAll({
+      attributes: {
+        include: [
+          [
+            fn("COALESCE", fn("SUM", col("product_details.quantity")), 0),
+            "totalQuantity",
+          ],
+        ],
+      },
       include: [
+        {
+          model: ProductDetail,
+          as: "product_details",
+          attributes: [],
+        },
         {
           model: Brand,
           as: "brand",
         },
       ],
       where: whereClause,
+      group: ["products.product_id", "brand.brand_id"],
       limit,
       offset,
       order: [[sortField, sort]],
+      subQuery: false,
     });
     const enrichedProducts = await Promise.all(
       products.rows.map(async (product) => {
@@ -107,16 +122,18 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
           sku: product.sku,
           color: colorData,
           status: product.status,
+          total_quantity: parseInt(product.get("totalQuantity")) || 0,
           createdAt: product.createdAt,
           updatedAt: product.updatedAt,
         };
       })
     );
+    const totalCount = await Product.count({ where: whereClause });
 
     return res.status(200).json({
       status: "success",
-      totalItems: products.count,
-      totalPages: Math.ceil(products.count / limit),
+      totalItems: totalCount,
+      totalPages: Math.ceil(totalCount / limit),
       currentPage: parseInt(page),
       data: enrichedProducts,
     });
@@ -240,7 +257,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
 exports.updateProduct = catchAsync(async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, code, description, brand_id, sku, status, color } = req.body;
+    const { name, code, description, brand_id, status, color } = req.body;
     const product = await Product.findByPk(id);
     if (!product) {
       return res.status(404).json({
@@ -248,8 +265,6 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         message: "Sản phẩm không tồn tại",
       });
     }
-
-    const checkProduct = await Product.findOne({ where: { sku } });
 
     if (checkProduct) {
       return res.status(400).json({
@@ -261,7 +276,6 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
     product.code = code;
     product.description = description;
     product.brand_id = brand_id;
-    product.sku = sku;
     product.status = status || product.status;
     product.color = color ? JSON.stringify(color) : null;
     await product.save();
@@ -379,30 +393,26 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
   }
 });
 
-
 exports.deleteUser = catchAsync(async (req, res, next) => {
   try {
+    const { id } = req.params;
 
-    const {id} = req.params;
-    
     const user = await User.findByPk(id);
-    if(!user) {
+    if (!user) {
       return res.status(400).json({
         status: "error",
-        message: "User not found"
-      })
+        message: "User not found",
+      });
     }
 
-    user.status = "INACTIVE"
+    user.status = "INACTIVE";
 
     await user.save();
 
-     return res.status(200).json({
+    return res.status(200).json({
       status: "success",
       message: "Xoá user thành công",
     });
-
-
   } catch (error) {
     return res.status(500).json({
       status: "error",

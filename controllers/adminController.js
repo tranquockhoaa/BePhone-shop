@@ -266,12 +266,7 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       });
     }
 
-    if (checkProduct) {
-      return res.status(400).json({
-        status: "Error",
-        message: "Sản phẩm đã tồn tại với SKU này",
-      });
-    }
+    
     product.name = name;
     product.code = code;
     product.description = description;

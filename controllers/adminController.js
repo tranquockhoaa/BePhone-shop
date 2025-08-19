@@ -257,7 +257,7 @@ exports.createProduct = catchAsync(async (req, res, next) => {
 exports.updateProduct = catchAsync(async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, code, description, brand_id, status, color } = req.body;
+    const { name, code, description, brand_id, sku, status, color } = req.body;
     const product = await Product.findByPk(id);
     if (!product) {
       return res.status(404).json({
@@ -266,11 +266,19 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       });
     }
 
-    
+    const checkProduct = await Product.findOne({ where: { sku: sku } });
+
+    if (checkProduct) {
+      return res.status(400).json({
+        status: "Error",
+        message: "Sản phẩm đã tồn tại với SKU này",
+      });
+    }
     product.name = name;
     product.code = code;
     product.description = description;
     product.brand_id = brand_id;
+    product.sku = sku;
     product.status = status || product.status;
     product.color = color ? JSON.stringify(color) : null;
     await product.save();

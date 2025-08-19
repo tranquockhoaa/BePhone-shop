@@ -104,7 +104,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
 
                 colorData.push({
                   color,
-                  // images: imageLinks,
+                  images: imageLinks,
                 });
               }
             }
@@ -186,7 +186,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
 
           colorData.push({
             color,
-            // images: imageLinks,
+            images: imageLinks,
           });
         }
       }

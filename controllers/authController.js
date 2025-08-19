@@ -86,7 +86,7 @@ exports.login = catchAsync(async (req, res, next) => {
 
   // Trả về role để FE điều hướng
   const token = signToken(user.user_id);
-  const expiredJWT = Number(process.env.JWT_EXPIRES_IN);
+  const expiredJWT = Number(600000);
   const key = `${user.user_id}:jwt:${token}`;
   redisClient.set(key, token, { EX: expiredJWT });
 

@@ -11,9 +11,10 @@ exports.createProductDetail = async (req, res) => {
       quantity,
       discount,
       sku,
+      color_id,
       specifications,
       productId,
-      ramSize,
+      ramSize = "",
       storageSize,
     } = req.body;
 
@@ -25,16 +26,30 @@ exports.createProductDetail = async (req, res) => {
     }
 
     const product_id = parseInt(productId);
+
+    const memory = await Memory.findOne({
+      where: {
+        ram_size: ramSize,
+        storage_size: storageSize,
+      },
+    });
+
+     if (!memory) {
+      return res.status(400).json({
+        status: "error",
+        message: "Memory không tồn tại",
+      });
+    }
+
     const newProductDetail = await ProductDetail.create({
       price,
       quantity,
       discount,
       sku,
+      color_id,
       specifications,
       product_id: product_id,
-      ramSize,
-      storageSize,
-      memory_id: 1,
+      memory_id: memory.memory_id,
       status: "ACTIVE",
     });
 

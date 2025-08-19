@@ -21,6 +21,8 @@ const orderRouter = require('./routes/orderRouter');
 const adminOrderRouter = require('./routes/adminOrderRouter');
 const mediaRouter = require('./routes/mediaRouter');
 const adminProductDetailRouter = require('./routes/adminProductDetailRouter');
+const dashboardRouter = require('./routes/dashboard');
+
 
 
 
@@ -50,6 +52,8 @@ app.use('/api/v1/admin/orders', adminOrderRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/media', mediaRouter);
 app.use('/api/v1/admin/product-detail', adminProductDetailRouter);
+app.use('/api/v1/admin/dashboard', dashboardRouter);
+
 
 
 

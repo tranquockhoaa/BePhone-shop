@@ -3,6 +3,12 @@ const Order = require("../models/orders");
 const User = require("../models/user");
 const OrderItem = require("../models/orderItem");
 const ProductDetail = require("../models/productDetails");
+const Product = require("../models/product");
+const Memory = require("../models/memory");
+const Color = require("../models/color");
+
+
+
 
 const { Op } = require("sequelize");
 
@@ -57,6 +63,30 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
           model: User,
           as: "user",
         },
+         {
+          model: OrderItem,
+          as: "order_items",
+          include: [
+            {
+              model: ProductDetail,
+              as: "product_details",
+               include: [
+                {
+                  model: Product,
+                  as: "product",
+                },
+                {
+                  model: Memory,
+                  as: "memory",
+                },
+                 {
+                  model: Color,
+                  as: "color",
+                },
+              ],
+            },
+          ],
+        },
       ],
       where: whereConditions,
       limit: +limit,
@@ -96,6 +126,20 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
             {
               model: ProductDetail,
               as: "product_details",
+               include: [
+                {
+                  model: Product,
+                  as: "product",
+                },
+                {
+                  model: Memory,
+                  as: "memory",
+                },
+                 {
+                  model: Color,
+                  as: "color",
+                },
+              ],
             },
           ],
         },

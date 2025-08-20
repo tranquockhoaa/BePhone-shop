@@ -15,7 +15,6 @@ const AppError = require("../utils/appError");
 exports.getAllProducts = catchAsync(async (req, res, next) => {
   try {
     const {
-
       search,
       brand_id = "",
       status = "",

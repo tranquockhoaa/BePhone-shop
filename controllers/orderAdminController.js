@@ -6,9 +6,7 @@ const ProductDetail = require("../models/productDetails");
 const Product = require("../models/product");
 const Memory = require("../models/memory");
 const Color = require("../models/color");
-
-
-
+const Media = require("../models/media");
 
 const { Op } = require("sequelize");
 
@@ -63,14 +61,14 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
           model: User,
           as: "user",
         },
-         {
+        {
           model: OrderItem,
           as: "order_items",
           include: [
             {
               model: ProductDetail,
               as: "product_details",
-               include: [
+              include: [
                 {
                   model: Product,
                   as: "product",
@@ -79,7 +77,7 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
                   model: Memory,
                   as: "memory",
                 },
-                 {
+                {
                   model: Color,
                   as: "color",
                 },
@@ -92,6 +90,71 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       limit: +limit,
       offset: (+page - 1) * +limit,
       order: [[finalSortBy, finalSortOrder]],
+    });
+
+    const formattedOrders = await Promise.all(
+      rows.map(async (order) => {
+        const orderData = order.toJSON();
+
+        if (orderData.order_items && orderData.order_items.length > 0) {
+          await Promise.all(
+            orderData.order_items.map(async (item) => {
+              const detail = item.product_details;
+
+              if (detail && detail.image) {
+                try {
+                  const parsedImage = JSON.parse(detail.image);
+                  const allImageIds = Object.values(parsedImage).flat();
+
+                  const images = await Media.findAll({
+                    where: {
+                      id: allImageIds,
+                    },
+                  });
+
+                  const imageMap = {};
+                  images.forEach((img) => {
+                    const base64 = img.data.toString("base64");
+                    const dataUrl = `data:${img.mimetype};base64,${base64}`;
+                    imageMap[img.id] = dataUrl;
+                  });
+
+                  for (const color in parsedImage) {
+                    parsedImage[color] = parsedImage[color].map(
+                      (id) => imageMap[id] || null
+                    );
+                  }
+
+                  detail.image = parsedImage;
+                } catch (err) {
+                  console.warn("Không thể parse image:", detail.image);
+                }
+              }
+
+              if (detail && detail.specifications) {
+                try {
+                  detail.specifications = JSON.parse(detail.specifications);
+                } catch (err) {
+                  console.warn(
+                    "Không thể parse specifications:",
+                    detail.specifications
+                  );
+                }
+              }
+            })
+          );
+        }
+
+        return orderData;
+      })
+    );
+
+    res.status(200).json({
+      status: "success",
+      total: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+      data: formattedOrders,
     });
 
     res.status(200).json({
@@ -110,10 +173,11 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
 // 2. Xem chi tiết đơn hàng
 exports.getOrderDetails = catchAsync(async (req, res, next) => {
   try {
-    const { orderId } = req.params;
+    const { id } = req.params;
+    const user = req.user;
 
-    const orderData = await Order.findOne({
-      where: { order_id: orderId },
+    const order = await Order.findOne({
+      where: { order_id: id, user_id: user.user_id },
       include: [
         {
           model: User,
@@ -126,7 +190,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
             {
               model: ProductDetail,
               as: "product_details",
-               include: [
+              include: [
                 {
                   model: Product,
                   as: "product",
@@ -135,7 +199,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
                   model: Memory,
                   as: "memory",
                 },
-                 {
+                {
                   model: Color,
                   as: "color",
                 },
@@ -146,11 +210,62 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
       ],
     });
 
-    if (!orderData) {
+    if (!order) {
       return res.status(404).json({
         status: "error",
         message: "Order not found",
       });
+    }
+
+    const orderData = order.toJSON();
+
+    if (orderData.order_items && orderData.order_items.length > 0) {
+      await Promise.all(
+        orderData.order_items.map(async (item) => {
+          const detail = item.product_details;
+
+          if (detail && detail.image) {
+            try {
+              const parsedImage = JSON.parse(detail.image);
+              const allImageIds = Object.values(parsedImage).flat();
+
+              const images = await Media.findAll({
+                where: {
+                  id: allImageIds,
+                },
+              });
+
+              const imageMap = {};
+              images.forEach((img) => {
+                const base64 = img.data.toString("base64");
+                const dataUrl = `data:${img.mimetype};base64,${base64}`;
+                imageMap[img.id] = dataUrl;
+              });
+
+              for (const color in parsedImage) {
+                parsedImage[color] = parsedImage[color].map(
+                  (id) => imageMap[id] || null
+                );
+              }
+
+              detail.image = parsedImage;
+            } catch (err) {
+              console.warn("Không thể parse image:", detail.image);
+            }
+          }
+
+          if (detail && detail.specifications) {
+            try {
+              detail.specifications = JSON.parse(detail.specifications);
+            } catch (err) {
+              console.warn(
+                "Không thể parse specifications:",
+                detail.specifications
+              );
+            }
+          }
+        })
+      );
     }
 
     res.status(200).json({

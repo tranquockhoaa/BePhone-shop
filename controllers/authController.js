@@ -42,6 +42,7 @@ const createSendToken = async (user, statusCode, res) => {
   res.status(statusCode).json({
     status: "success",
     token,
+    userId: user.user_id,
   });
 };
 
@@ -333,7 +334,7 @@ exports.registerAdmin = catchAsync(async (req, res, next) => {
     password,
     phone_number,
     address,
-    role: role
+    role: role,
   });
   res.status(201).json({ status: "success", data: user });
 });

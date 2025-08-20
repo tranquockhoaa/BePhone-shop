@@ -4,14 +4,11 @@ const catchAsync = require("./../utils/catchAsync");
 
 exports.createCart = catchAsync(async (req, res, next) => {
   try {
-    const user = req.user;
-    if (!user) {
-      return res.status(400).json({
-        status: "error",
-        message: "Người dùng không tồn tại",
-      });
-    }
-    const cart = await Cart.create({ user_id: user.user_id });
+    // const user = req.user;
+    const { id } = req.body;
+
+    console.log("usser id", id);
+    const cart = await Cart.create({ user_id: id });
     res.status(201).json({
       status: "success",
       data: {
@@ -67,8 +64,8 @@ exports.getCartByUserId = catchAsync(async (req, res, next) => {
         message: "Người dùng không tồn tại",
       });
     }
-   
-    const cart = await Cart.findOne({user_id: user.user_id});
+
+    const cart = await Cart.findOne({ user_id: user.user_id });
     if (!cart) {
       return res.status(404).json({
         status: "error",
@@ -80,7 +77,6 @@ exports.getCartByUserId = catchAsync(async (req, res, next) => {
       status: "success",
       data: cart,
     });
-
   } catch (error) {
     return res.status(500).json({
       status: "error",

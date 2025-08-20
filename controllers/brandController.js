@@ -1,6 +1,7 @@
 const BrandService = require("./../service/brandService");
 const catchAsync = require("./../utils/catchAsync");
 const Brand = require("./../models/brand");
+const Product = require("./../models/product");
 
 exports.createBrand = catchAsync(async (req, res, next) => {
   const newBrand = await BrandService.createBrand(req.body);
@@ -11,13 +12,48 @@ exports.createBrand = catchAsync(async (req, res, next) => {
 });
 
 exports.updateBrand = catchAsync(async (req, res, next) => {
-  const updateBrand = await BrandService.updateBrand(req.params.id, req.body);
-  res.status(200).json({
-    status: "success",
-    data: updateBrand,
-  });
-});
+  try {
+    const { id } = req.params;
+    const { status, name, infomation, icon, sortOrder } = req.body;
 
+    const brand = await Brand.findByPk(id);
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found" });
+    }
+
+    if (name) brand.name = name;
+    if (infomation) brand.infomation = infomation;
+    if (icon) brand.icon = icon;
+    if (sortOrder) brand.sortOrder = sortOrder;
+    if (status) brand.status = status;
+
+    await brand.save();
+
+    if (status === "INACTIVE") {
+      await Product.update(
+        { status: "INACTIVE" },
+        { where: { brand_id: id } }
+      );
+    } else if (status === "ACTIVE") {
+      await Product.update(
+        { status: "ACTIVE" },
+        { where: { brand_id: id } }
+      );
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        brand,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "Error",
+      message: error.message,
+    });
+  }
+});
 exports.getBrandByPk = catchAsync(async (req, res, next) => {
   const brand = await BrandService.getBrandByPk(req.params.id);
   res.status(200).json({
@@ -53,7 +89,7 @@ exports.getBrandByName = catchAsync(async (req, res, next) => {
 });
 
 exports.sortBrand = async (req, res) => {
-  const newOrder = req.body; 
+  const newOrder = req.body;
   try {
     const updatePromises = newOrder.map((item) =>
       Brand.update(
@@ -68,14 +104,13 @@ exports.sortBrand = async (req, res) => {
   }
 };
 
-
 exports.getAllBrandForUser = async (req, res) => {
   const order = req.query.order?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
   try {
     const brands = await Brand.findAll({
       order: [["sortOrder", order]],
-      where: { status: "ACTIVE" }, 
+      where: { status: "ACTIVE" },
     });
 
     if (!brands || brands.length === 0) {

@@ -196,6 +196,33 @@ exports.checkPayment = async (req, res) => {
         order.updatedAt = new Date();
         await order.save();
         console.log("Đã cập nhật trạng thái đơn hàng thành CONFIRMED");
+
+        const orderItems = await OrderItem.findAll({
+          where: { order_id: order.order_id },
+        });
+
+        for (const item of orderItems) {
+          const productDetail = await ProductDetail.findOne({
+            where: { product_detail_id: item.product_detail_id },
+          });
+
+          if (productDetail) {
+            productDetail.quantity -= item.quantity;
+
+            if (productDetail.quantity < 0) {
+              return res.status(400).json({
+                status: "fail",
+                message: `Không đủ số lượng sản phẩm ${productDetail.sku} trong kho.`,
+              });
+            }
+
+            await productDetail.save();
+          } else {
+            console.log(
+              `Không tìm thấy sản phẩm với mã ${item.product_detail_id}`
+            );
+          }
+        }
       } else {
         console.log("Đơn hàng đã được xác nhận từ trước, không cập nhật lại.");
       }
@@ -465,7 +492,6 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
           const detail = item.product_details;
           const product = detail?.product;
 
-
           if (product?.color) {
             try {
               const colorArray = JSON.parse(product.color);
@@ -526,7 +552,6 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
     const { id } = req.params;
     const { status } = req.body;
     const user = req.user;
-
     const order = await Order.findOne({
       where: { order_id: id, user_id: user.user_id },
     });
@@ -537,13 +562,57 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
         .json({ status: "fail", message: "Order not found" });
     }
 
-    order.status = status;
-    await order.save();
+    if (order.status === "SHIPPING") {
+      return res.status(400).json({
+        status: "fail",
+        message: "Order is in shipping status, status cannot be changed.",
+      });
+    }
 
-    res.status(200).json({
-      status: "success",
-      message: `Order status updated to ${status}`,
-    });
+    if (status === "CANCELLED") {
+      if (order.status === "PENDING") {
+        order.status = "CANCELLED";
+        await order.save();
+        return res.status(200).json({
+          status: "success",
+          message: "Order status updated to CANCELLED.",
+        });
+      }
+
+      if (order.status === "CONFIRMED") {
+        const orderItems = await OrderItem.findAll({ where: { order_id: id } });
+
+        for (const item of orderItems) {
+          const productDetail = await ProductDetail.findOne({
+            where: { product_detail_id: item.product_detail_id },
+          });
+
+          if (productDetail) {
+            productDetail.quantity += item.quantity;
+            await productDetail.save();
+          }
+        }
+
+        order.status = "CANCELLED";
+        await order.save();
+
+        return res.status(200).json({
+          status: "success",
+          message:
+            "Order status updated to CANCELLED and product quantities restored.",
+        });
+      }
+    }
+
+    if (status !== "CANCELLED") {
+      order.status = status;
+      await order.save();
+
+      return res.status(200).json({
+        status: "success",
+        message: `Order status updated to ${status}.`,
+      });
+    }
   } catch (error) {
     return res.status(500).json({
       status: "error",

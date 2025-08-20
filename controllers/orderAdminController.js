@@ -336,6 +336,42 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
         .json({ status: "fail", message: "Order not found" });
     }
 
+    const oldStatus = order.status;
+
+    if (status === "CONFIRMED" && oldStatus !== "CONFIRMED") {
+      const orderItems = await OrderItem.findAll({
+        where: { order_id: orderId },
+      });
+
+      for (const item of orderItems) {
+        const productDetail = await ProductDetail.findOne({
+          where: { product_detail_id: item.product_detail_id },
+        });
+
+        if (productDetail) {
+          productDetail.quantity -= item.quantity;
+          await productDetail.save();
+        }
+      }
+    }
+
+    if (status === "CANCELLED" && oldStatus !== "CANCELLED") {
+      const orderItems = await OrderItem.findAll({
+        where: { order_id: orderId },
+      });
+
+      for (const item of orderItems) {
+        const productDetail = await ProductDetail.findOne({
+          where: { product_detail_id: item.product_detail_id },
+        });
+
+        if (productDetail) {
+          productDetail.quantity += item.quantity;
+          await productDetail.save();
+        }
+      }
+    }
+
     order.status = status;
     await order.save();
 

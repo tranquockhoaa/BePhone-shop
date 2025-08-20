@@ -1,19 +1,21 @@
-const ProductService = require("./../service/productService");
-const catchAsync = require("./../utils/catchAsync");
-const Product = require("./../models/product");
-const Brand = require("../models/brand");
-const Media = require("../models/media");
-const Color = require("../models/color");
+const ProductService = require('./../service/productService');
+const catchAsync = require('./../utils/catchAsync');
+const Product = require('./../models/product');
+const Brand = require('../models/brand');
+const Media = require('../models/media');
+const Color = require('../models/color');
+const ProductDetails = require('../models/productDetails');
+const Memory = require('../models/memory');
 
-const { Op } = require("sequelize");
+const { Op } = require('sequelize');
 
 exports.getAllProducts = catchAsync(async (req, res, next) => {
   try {
     const {
-      brand_id = "",
-      status = "",
-      sortBy = "createdAt",
-      sortOrder = "ASC",
+      brand_id = '',
+      status = '',
+      sortBy = 'createdAt',
+      sortOrder = 'ASC',
       page = 1,
       size = 10,
       search,
@@ -23,7 +25,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     const offset = (parseInt(page) - 1) * limit;
 
     const whereClause = {
-      status: "ACTIVE",
+      status: 'ACTIVE',
     };
 
     if (status) whereClause.status = status;
@@ -38,23 +40,23 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
       ];
     }
     const allowedSortFields = [
-      "createdAt",
-      "updatedAt",
-      "name",
-      "code",
-      "sku",
-      "status",
-      "product_id",
+      'createdAt',
+      'updatedAt',
+      'name',
+      'code',
+      'sku',
+      'status',
+      'product_id',
     ];
 
-    const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
-    const sort = sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    const sort = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     const products = await Product.findAndCountAll({
       include: [
         {
           model: Brand,
-          as: "brand",
+          as: 'brand',
         },
       ],
       where: whereClause,
@@ -77,7 +79,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
                 });
 
                 const imageLinks = images.map((image) => {
-                  const base64 = image.data.toString("base64");
+                  const base64 = image.data.toString('base64');
                   const mimeType = image.mimetype;
                   const link = `data:${mimeType};base64,${base64}`;
                   return {
@@ -93,9 +95,17 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
               }
             }
           } catch (e) {
-            console.warn("Không thể parse trường color:", product.color);
+            console.warn('Không thể parse trường color:', product.color);
           }
         }
+
+        const productDetails = await ProductDetails.findAll({
+          where: { product_id: product.product_id },
+          include: [
+            { model: Color, as: 'color' },
+            { model: Memory, as: 'memory' },
+          ],
+        });
 
         return {
           product_id: product.product_id,
@@ -105,6 +115,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
           brand: product.brand,
           sku: product.sku,
           color: colorData,
+          productDetails,
           status: product.status,
           createdAt: product.createdAt,
           updatedAt: product.updatedAt,
@@ -113,7 +124,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     );
 
     return res.status(200).json({
-      status: "success",
+      status: 'success',
       totalItems: products.count,
       totalPages: Math.ceil(products.count / limit),
       currentPage: parseInt(page),
@@ -121,7 +132,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     });
   } catch (error) {
     return res.status(500).json({
-      status: "error",
+      status: 'error',
       message: error.message,
     });
   }
@@ -133,15 +144,15 @@ exports.getProductById = catchAsync(async (req, res, next) => {
     include: [
       {
         model: Brand,
-        as: "brand",
+        as: 'brand',
       },
     ],
   });
 
   if (!product) {
     return res.status(404).json({
-      status: "error",
-      message: "Product not found",
+      status: 'error',
+      message: 'Product not found',
     });
   }
 
@@ -157,7 +168,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
           });
 
           const imageLinks = images.map((image) => {
-            const base64 = image.data.toString("base64");
+            const base64 = image.data.toString('base64');
             const mimeType = image.mimetype;
             const link = `data:${mimeType};base64,${base64}`;
             return {
@@ -173,12 +184,20 @@ exports.getProductById = catchAsync(async (req, res, next) => {
         }
       }
     } catch (e) {
-      console.warn("Không thể parse trường color:", product.color);
+      console.warn('Không thể parse trường color:', product.color);
     }
   }
 
+  const productDetails = await ProductDetails.findAll({
+    where: { product_id: product.product_id },
+    include: [
+      { model: Color, as: 'color' },
+      { model: Memory, as: 'memory' },
+    ],
+  });
+
   res.status(200).json({
-    status: "success",
+    status: 'success',
     data: {
       product_id: product.product_id,
       name: product.name,
@@ -187,6 +206,7 @@ exports.getProductById = catchAsync(async (req, res, next) => {
       brand: product.brand,
       sku: product.sku,
       color: colorData,
+      productDetails,
       status: product.status,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
@@ -198,7 +218,7 @@ exports.getCodeProductForHomePage = catchAsync(async (req, res, next) => {
   const data = req.query;
   const codes = await ProductService.getCodeProductForHomePage(data);
   res.status(200).json({
-    status: "Done",
+    status: 'Done',
     data: {
       codes,
     },
@@ -209,7 +229,7 @@ exports.getLastestProducts = catchAsync(async (req, res, next) => {
   const queryParams = req.query;
   const data = await ProductService.getLastestProducts(queryParams);
   res.status(200).json({
-    status: "Done",
+    status: 'Done',
     data: {
       data,
     },
@@ -220,7 +240,7 @@ exports.getInfoDetailByCodeName = catchAsync(async (req, res, next) => {
   const queryParams = req.query;
   const data = await ProductService.getInfoDetailByCodeName(queryParams);
   res.status(200).json({
-    status: "Done",
+    status: 'Done',
     data: {
       data,
     },
@@ -233,7 +253,7 @@ exports.getProductByBrand = catchAsync(async (req, res, next) => {
   // sortPrice: 'asc' hoặc 'desc' (nếu không truyền sẽ mặc định theo createdAt DESC)
   const result = await ProductService.getProductByBrand(queryParams);
   res.status(200).json({
-    status: "Done",
+    status: 'Done',
     products: result.data,
     total: result.total,
   });
@@ -245,7 +265,7 @@ exports.searchProduct = catchAsync(async (req, res, next) => {
   // sortPrice: 'asc' hoặc 'desc' (nếu không truyền sẽ mặc định theo createdAt DESC)
   const result = await ProductService.searchProduct(queryParams);
   res.status(200).json({
-    status: "Done",
+    status: 'Done',
     products: result.data,
     total: result.total,
   });

@@ -7,7 +7,7 @@ const Memory = require("../models/memory");
 const Brand = require("../models/brand");
 const Media = require("../models/media");
 
-const { Op, fn, col, literal } = require("sequelize");
+const { Op, fn, col, literal , where, cast} = require("sequelize");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 
@@ -32,8 +32,8 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
     if (brand_id) whereClause.brand_id = brand_id;
     if (search) {
       whereClause[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } }, 
-        { code: { [Op.iLike]: `%${search}%` } }, 
+        { name: { [Op.iLike]: `%${search}%` } },
+        { code: { [Op.iLike]: `%${search}%` } },
         { description: { [Op.iLike]: `%${search}%` } },
         { sku: { [Op.iLike]: `%${search}%` } },
       ];
@@ -265,12 +265,12 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
       });
     }
 
-  const checkProduct = await Product.findOne({ 
-  where: { 
-    sku: sku,
-    product_id: { [Op.ne]: id } 
-  } 
-});
+    const checkProduct = await Product.findOne({
+      where: {
+        sku: sku,
+        product_id: { [Op.ne]: id },
+      },
+    });
 
     if (checkProduct) {
       return res.status(400).json({
@@ -339,35 +339,22 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
 // GET /api/v1/admin/users
 exports.getAllUsers = catchAsync(async (req, res, next) => {
   try {
-    const {
-      page = 1,
-      limit = 20,
-      full_name,
-      email,
-      phone_number,
-      address,
-      gender,
-      birth_date,
-    } = req.query;
+    const { page = 1, limit = 20, search, gender, birth_date, role } = req.query;
 
     const offset = (page - 1) * limit;
 
     const whereClause = {};
 
-    if (full_name) {
-      whereClause.full_name = { [Op.iLike]: `%${full_name}%` };
-    }
-
-    if (email) {
-      whereClause.email = { [Op.iLike]: `%${email}%` };
-    }
-
-    if (phone_number) {
-      whereClause.phone_number = { [Op.iLike]: `%${phone_number}%` };
-    }
-
-    if (address) {
-      whereClause.address = { [Op.iLike]: `%${address}%` };
+    if (search) {
+      whereClause[Op.or] = [
+        where(cast(col("user_id"), "TEXT"), {
+          [Op.iLike]: `%${search}%`,
+        }),
+        { full_name: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+        { phone_number: { [Op.iLike]: `%${search}%` } },
+        { address: { [Op.iLike]: `%${search}%` } },
+      ];
     }
 
     if (gender) {
@@ -378,6 +365,9 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
       whereClause.birth_date = birth_date;
     }
 
+     if (role) {
+      whereClause.role = role;
+    }
     const { count, rows } = await User.findAndCountAll({
       where: whereClause,
       order: [["createdAt", "DESC"]],
@@ -399,7 +389,6 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
     });
   }
 });
-
 exports.deleteUser = catchAsync(async (req, res, next) => {
   try {
     const { id } = req.params;

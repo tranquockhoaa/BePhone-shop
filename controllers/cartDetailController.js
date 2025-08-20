@@ -5,6 +5,9 @@ const Product = require("./../models/product");
 const Brand = require("./../models/brand");
 const Memory = require("./../models/memory");
 const Color = require("./../models/color");
+const Media = require("./../models/media");
+
+
 
 const catchAsync = require("./../utils/catchAsync");
 
@@ -20,7 +23,7 @@ const calculateCartTotal = async (cart_id) => {
 exports.getCartDetails = catchAsync(async (req, res, next) => {
   const user = req.user;
 
-  let cart = await Cart.findOne({
+  const cart = await Cart.findOne({
     where: {
       user_id: user.user_id,
       status: "ACTIVE",
@@ -34,7 +37,7 @@ exports.getCartDetails = catchAsync(async (req, res, next) => {
     });
   }
 
-  const cartDetails = await CartDetail.findAll({
+  const cartDetailsRaw = await CartDetail.findAll({
     where: {
       cart_id: cart.cart_id,
     },
@@ -51,7 +54,6 @@ exports.getCartDetails = catchAsync(async (req, res, next) => {
             model: Product,
             as: "product",
             attributes: { exclude: ["brand_id"] },
-
             include: [
               {
                 model: Brand,
@@ -65,12 +67,61 @@ exports.getCartDetails = catchAsync(async (req, res, next) => {
           },
           {
             model: Color,
-            as: "color"
-          }
+            as: "color",
+          },
         ],
       },
     ],
   });
+
+  const cartDetails = await Promise.all(
+    cartDetailsRaw.map(async (item) => {
+      const data = item.toJSON();
+
+      const detail = data.product_detail;
+
+      // Parse image
+      if (detail && detail.image) {
+        try {
+          const parsedImage = JSON.parse(detail.image);
+          const allImageIds = Object.values(parsedImage).flat();
+
+          const images = await Media.findAll({
+            where: {
+              id: allImageIds,
+            },
+          });
+
+          const imageMap = {};
+          images.forEach((img) => {
+            const base64 = img.data.toString("base64");
+            const dataUrl = `data:${img.mimetype};base64,${base64}`;
+            imageMap[img.id] = dataUrl;
+          });
+
+          for (const color in parsedImage) {
+            parsedImage[color] = parsedImage[color].map(
+              (id) => imageMap[id] || null
+            );
+          }
+
+          detail.image = parsedImage;
+        } catch (err) {
+          console.warn("Không thể parse image:", detail.image);
+        }
+      }
+
+      if (detail && detail.specifications) {
+        try {
+          detail.specifications = JSON.parse(detail.specifications);
+        } catch (err) {
+          console.warn("Không thể parse specifications:", detail.specifications);
+        }
+      }
+
+      return data;
+    })
+  );
 
   return res.status(200).json({
     status: "success",

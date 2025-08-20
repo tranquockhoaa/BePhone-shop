@@ -292,10 +292,25 @@ exports.updateProductDetail = async (req, res) => {
       sku,
       specifications,
       product_id,
-      memory_id,
+      ramSize = "",
+      storageSize,
       color_id,
       status,
     } = req.body;
+
+    const memory = await Memory.findOne({
+      where: {
+        ram_size: ramSize,
+        storage_size: storageSize,
+      },
+    });
+
+    if (!memory) {
+      return res.status(400).json({
+        status: "error",
+        message: "Memory không tồn tại",
+      });
+    }
 
     const productDetail = await ProductDetail.findByPk(id);
     if (!productDetail) {
@@ -311,7 +326,7 @@ exports.updateProductDetail = async (req, res) => {
       sku,
       specifications,
       product_id,
-      memory_id,
+      memory_id: memory.memory_id,
       color_id,
       status,
     });

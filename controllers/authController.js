@@ -77,12 +77,12 @@ exports.login = catchAsync(async (req, res, next) => {
 
   const user = await User.findOne({ where: { email } });
   if (!user) {
-    return next(new AppError("Can not find account!", 400));
+    return next(new AppError("Bạn chưa đăng ký tài khoản với email này", 400));
   }
 
   const checkPassword = await bcrypt.compare(password, user.password);
   if (!checkPassword) {
-    return next(new AppError("Password is incorrect!"));
+    return next(new AppError("Sai mật khẩu"));
   }
 
   // Trả về role để FE điều hướng
@@ -103,7 +103,6 @@ exports.login = catchAsync(async (req, res, next) => {
   });
 });
 exports.protect = catchAsync(async (req, res, next) => {
-  console.log("protect running");
   let token;
   if (
     req.headers.authorization &&

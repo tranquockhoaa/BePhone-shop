@@ -38,8 +38,7 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       ? sortOrder.toUpperCase()
       : "ASC";
 
-    const whereConditions = {
-    };
+    const whereConditions = {};
 
     if (status) whereConditions.status = status;
     if (payment_method) whereConditions.payment_method = payment_method;
@@ -99,7 +98,9 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
 
             if (productDetail?.specifications) {
               try {
-                productDetail.specifications = JSON.parse(productDetail.specifications);
+                productDetail.specifications = JSON.parse(
+                  productDetail.specifications
+                );
               } catch (err) {
                 productDetail.specifications = null;
               }
@@ -120,15 +121,20 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
                       },
                     });
 
-                    const imageUrls = images.map((media) => {
-                      const base64 = Buffer.from(media.data, "base64").toString();
-                      return `data:${media.mimetype};base64,${base64}`;
+                    const imageLinks = images.map((image) => {
+                      const base64 = image.data.toString("base64");
+                      const mimeType = image.mimetype;
+                      const link = `data:${mimeType};base64,${base64}`;
+                      return {
+                        id: image.id,
+                        link,
+                      };
                     });
 
                     return {
-                      color_id: colorItem.color,
+                      color_id: parseInt(item.color_id, 10),
                       color_name: colorName,
-                      images: imageUrls,
+                      images: imageLinks,
                     };
                   })
                 );
@@ -217,7 +223,6 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
           const detail = item.product_details;
           const product = detail?.product;
 
-          // Parse and enrich detail.image
           if (detail?.image) {
             try {
               const parsedImage = JSON.parse(detail.image);
@@ -255,12 +260,14 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
             try {
               detail.specifications = JSON.parse(detail.specifications);
             } catch (err) {
-              console.warn("Không thể parse specifications:", detail.specifications);
+              console.warn(
+                "Không thể parse specifications:",
+                detail.specifications
+              );
               detail.specifications = null;
             }
           }
 
-          // Enrich product.color
           if (product?.color) {
             try {
               const colorArray = JSON.parse(product.color);
@@ -276,15 +283,20 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
                     },
                   });
 
-                  const imageUrls = images.map((media) => {
-                    const base64 = Buffer.from(media.data, "base64").toString();
-                    return `data:${media.mimetype};base64,${base64}`;
+                  const imageLinks = images.map((image) => {
+                    const base64 = image.data.toString("base64");
+                    const mimeType = image.mimetype;
+                    const link = `data:${mimeType};base64,${base64}`;
+                    return {
+                      id: image.id,
+                      link,
+                    };
                   });
 
                   return {
                     color_id: colorItem.color,
                     color_name: colorName,
-                    images: imageUrls,
+                    images: imageLinks,
                   };
                 })
               );

@@ -152,15 +152,19 @@ exports.getAllProductDetail = async (req, res) => {
                   },
                 });
 
-                const imageUrls = images.map((media) => {
-                  const base64 = Buffer.from(media.data, "base64").toString();
-                  return `data:${media.mimetype};base64,${base64}`;
+                const imageLinks = images.map((image) => {
+                  const base64 = image.data.toString("base64");
+                  const mimeType = image.mimetype;
+                  const link = `data:${mimeType};base64,${base64}`;
+                  return {
+                    id: image.id,
+                    link,
+                  };
                 });
-
                 return {
                   color_id: colorItem.color,
                   color_name: colorName,
-                  images: imageUrls,
+                  images: imageLinks,
                 };
               })
             );
@@ -241,15 +245,20 @@ exports.getProductDetailById = async (req, res) => {
               },
             });
 
-            const imageUrls = images.map((media) => {
-              const base64 = Buffer.from(media.data, "base64").toString();
-              return `data:${media.mimetype};base64,${base64}`;
+            const imageLinks = images.map((image) => {
+              const base64 = image.data.toString("base64");
+              const mimeType = image.mimetype;
+              const link = `data:${mimeType};base64,${base64}`;
+              return {
+                id: image.id,
+                link,
+              };
             });
 
             return {
               color_id: colorItem.color,
               color_name: colorName,
-              images: imageUrls,
+              images: imageLinks,
             };
           })
         );

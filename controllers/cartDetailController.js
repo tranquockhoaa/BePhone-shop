@@ -7,7 +7,7 @@ const Memory = require("./../models/memory");
 const Color = require("./../models/color");
 const Media = require("./../models/media");
 
-
+const { Op } = require("sequelize");
 
 const catchAsync = require("./../utils/catchAsync");
 
@@ -74,61 +74,64 @@ exports.getCartDetails = catchAsync(async (req, res, next) => {
     ],
   });
 
-  const cartDetails = await Promise.all(
-    cartDetailsRaw.map(async (item) => {
-      const data = item.toJSON();
+  const updatedCartDetails = await Promise.all(
+    cartDetailsRaw.map(async (detail) => {
+      const productDetail = detail.product_detail;
+      const product = productDetail?.product;
 
-      const detail = data.product_detail;
-
-      // Parse image
-      if (detail && detail.image) {
+      if (productDetail?.specifications) {
         try {
-          const parsedImage = JSON.parse(detail.image);
-          const allImageIds = Object.values(parsedImage).flat();
-
-          const images = await Media.findAll({
-            where: {
-              id: allImageIds,
-            },
-          });
-
-          const imageMap = {};
-          images.forEach((img) => {
-            const base64 = img.data.toString("base64");
-            const dataUrl = `data:${img.mimetype};base64,${base64}`;
-            imageMap[img.id] = dataUrl;
-          });
-
-          for (const color in parsedImage) {
-            parsedImage[color] = parsedImage[color].map(
-              (id) => imageMap[id] || null
-            );
-          }
-
-          detail.image = parsedImage;
+          productDetail.specifications = JSON.parse(
+            productDetail.specifications
+          );
         } catch (err) {
-          console.warn("Không thể parse image:", detail.image);
+          productDetail.specifications = null;
         }
       }
 
-      if (detail && detail.specifications) {
+      if (product?.color) {
         try {
-          detail.specifications = JSON.parse(detail.specifications);
+          const colorArray = JSON.parse(product.color);
+          const enrichedColorArray = await Promise.all(
+            colorArray.map(async (colorItem) => {
+              const colorRecord = await Color.findByPk(colorItem.color);
+              const colorName = colorRecord ? colorRecord.name : null;
+
+              const images = await Media.findAll({
+                where: {
+                  id: { [Op.in]: colorItem.img || [] },
+                  status: "ACTIVE",
+                },
+              });
+
+              const imageUrls = images.map((media) => {
+                const base64 = Buffer.from(media.data, "base64").toString();
+                return `data:${media.mimetype};base64,${base64}`;
+              });
+
+              return {
+                color_id: colorItem.color,
+                color_name: colorName,
+                images: imageUrls,
+              };
+            })
+          );
+
+          product.color = enrichedColorArray;
         } catch (err) {
-          console.warn("Không thể parse specifications:", detail.specifications);
+          product.color = null;
         }
       }
 
-      return data;
+      return detail;
     })
   );
-
   return res.status(200).json({
     status: "success",
     data: {
       cart_id: cart.cart_id,
       status: cart.status,
-      cartDetails,
+      updatedCartDetails,
     },
   });
 });

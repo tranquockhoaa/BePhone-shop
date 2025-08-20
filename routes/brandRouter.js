@@ -5,6 +5,4 @@ router = express.Router();
 
 router.get("/", brandController.getAllBrandForUser);
 
-
-
 module.exports = router;

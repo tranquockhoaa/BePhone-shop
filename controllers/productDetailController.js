@@ -54,7 +54,6 @@ exports.getAllProductDetail = async (req, res) => {
     const formatted = await Promise.all(
       productDetails.rows.map(async (detail) => {
         const data = detail.toJSON();
-
         if (data.image) {
           try {
             const parsedImage = JSON.parse(data.image);

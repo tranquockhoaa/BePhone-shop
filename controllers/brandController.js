@@ -29,15 +29,29 @@ exports.updateBrand = catchAsync(async (req, res, next) => {
 
     await brand.save();
 
-    if (status === "INACTIVE") {
-      await Product.update(
-        { status: "INACTIVE" },
-        { where: { brand_id: id } }
-      );
-    } else if (status === "ACTIVE") {
-      await Product.update(
-        { status: "ACTIVE" },
-        { where: { brand_id: id } }
+    // Update products of this brand
+    await Product.update(
+      { status },
+      { where: { brand_id: id } }
+    );
+
+    const products = await Product.findAll({
+      where: { brand_id: id },
+      attributes: ['product_id']
+    });
+
+    const productIds = products.map(product => product.product_id);
+
+    if (productIds.length > 0) {
+      const ProductDetails = require('../models/productDetail');
+
+      await ProductDetails.update(
+        { status },
+        {
+          where: {
+            product_id: productIds
+          }
+        }
       );
     }
 
@@ -54,6 +68,9 @@ exports.updateBrand = catchAsync(async (req, res, next) => {
     });
   }
 });
+
+
+
 exports.getBrandByPk = catchAsync(async (req, res, next) => {
   const brand = await BrandService.getBrandByPk(req.params.id);
   res.status(200).json({

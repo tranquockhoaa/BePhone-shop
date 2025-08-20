@@ -16,7 +16,6 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       page = 1,
       limit = 10,
       status,
-
       search,
       payment_method,
       sortBy = "createdAt",
@@ -39,12 +38,11 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       ? sortOrder.toUpperCase()
       : "ASC";
 
-    const whereConditions = {};
+    const whereConditions = {
+    };
 
     if (status) whereConditions.status = status;
-
     if (payment_method) whereConditions.payment_method = payment_method;
-
     if (search) {
       whereConditions[Op.or] = [
         { full_name: { [Op.like]: `%${search}%` } },
@@ -55,7 +53,7 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       ];
     }
 
-    const { count, rows } = await Order.findAndCountAll({
+    const { count, rows: rawOrders } = await Order.findAndCountAll({
       include: [
         {
           model: User,
@@ -92,60 +90,62 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       order: [[finalSortBy, finalSortOrder]],
     });
 
-    const formattedOrders = await Promise.all(
-      rows.map(async (order) => {
-        const orderData = order.toJSON();
+    const enrichedOrders = await Promise.all(
+      rawOrders.map(async (order) => {
+        const enrichedItems = await Promise.all(
+          order.order_items.map(async (item) => {
+            const productDetail = item.product_details;
+            const product = productDetail?.product;
 
-        if (orderData.order_items && orderData.order_items.length > 0) {
-          await Promise.all(
-            orderData.order_items.map(async (item) => {
-              const detail = item.product_details;
-
-              if (detail && detail.image) {
-                try {
-                  const parsedImage = JSON.parse(detail.image);
-                  const allImageIds = Object.values(parsedImage).flat();
-
-                  const images = await Media.findAll({
-                    where: {
-                      id: allImageIds,
-                    },
-                  });
-
-                  const imageMap = {};
-                  images.forEach((img) => {
-                    const base64 = img.data.toString("base64");
-                    const dataUrl = `data:${img.mimetype};base64,${base64}`;
-                    imageMap[img.id] = dataUrl;
-                  });
-
-                  for (const color in parsedImage) {
-                    parsedImage[color] = parsedImage[color].map(
-                      (id) => imageMap[id] || null
-                    );
-                  }
-
-                  detail.image = parsedImage;
-                } catch (err) {
-                  console.warn("Không thể parse image:", detail.image);
-                }
+            if (productDetail?.specifications) {
+              try {
+                productDetail.specifications = JSON.parse(productDetail.specifications);
+              } catch (err) {
+                productDetail.specifications = null;
               }
+            }
 
-              if (detail && detail.specifications) {
-                try {
-                  detail.specifications = JSON.parse(detail.specifications);
-                } catch (err) {
-                  console.warn(
-                    "Không thể parse specifications:",
-                    detail.specifications
-                  );
-                }
+            if (product?.color) {
+              try {
+                const colorArray = JSON.parse(product.color);
+                const enrichedColorArray = await Promise.all(
+                  colorArray.map(async (colorItem) => {
+                    const colorRecord = await Color.findByPk(colorItem.color);
+                    const colorName = colorRecord ? colorRecord.name : null;
+
+                    const images = await Media.findAll({
+                      where: {
+                        id: { [Op.in]: colorItem.img || [] },
+                        status: "ACTIVE",
+                      },
+                    });
+
+                    const imageUrls = images.map((media) => {
+                      const base64 = Buffer.from(media.data, "base64").toString();
+                      return `data:${media.mimetype};base64,${base64}`;
+                    });
+
+                    return {
+                      color_id: colorItem.color,
+                      color_name: colorName,
+                      images: imageUrls,
+                    };
+                  })
+                );
+
+                product.color = enrichedColorArray;
+              } catch (err) {
+                product.color = null;
               }
-            })
-          );
-        }
+            }
 
-        return orderData;
+            return item;
+          })
+        );
+
+        order.order_items = enrichedItems;
+
+        return order;
       })
     );
 
@@ -154,13 +154,7 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       total: count,
       totalPages: Math.ceil(count / limit),
       currentPage: parseInt(page),
-      data: formattedOrders,
-    });
-
-    res.status(200).json({
-      status: "success",
-      total: count,
-      data: rows,
+      data: enrichedOrders,
     });
   } catch (error) {
     return res.status(500).json({
@@ -169,15 +163,13 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
     });
   }
 });
-
 // 2. Xem chi tiết đơn hàng
 exports.getOrderDetails = catchAsync(async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const user = req.user;
+    const { orderId } = req.params;
 
     const order = await Order.findOne({
-      where: { order_id: id, user_id: user.user_id },
+      where: { order_id: orderId },
       include: [
         {
           model: User,
@@ -223,8 +215,10 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
       await Promise.all(
         orderData.order_items.map(async (item) => {
           const detail = item.product_details;
+          const product = detail?.product;
 
-          if (detail && detail.image) {
+          // Parse and enrich detail.image
+          if (detail?.image) {
             try {
               const parsedImage = JSON.parse(detail.image);
               const allImageIds = Object.values(parsedImage).flat();
@@ -232,6 +226,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
               const images = await Media.findAll({
                 where: {
                   id: allImageIds,
+                  status: "ACTIVE",
                 },
               });
 
@@ -251,17 +246,53 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
               detail.image = parsedImage;
             } catch (err) {
               console.warn("Không thể parse image:", detail.image);
+              detail.image = null;
             }
           }
 
-          if (detail && detail.specifications) {
+          // Parse specifications
+          if (detail?.specifications) {
             try {
               detail.specifications = JSON.parse(detail.specifications);
             } catch (err) {
-              console.warn(
-                "Không thể parse specifications:",
-                detail.specifications
+              console.warn("Không thể parse specifications:", detail.specifications);
+              detail.specifications = null;
+            }
+          }
+
+          // Enrich product.color
+          if (product?.color) {
+            try {
+              const colorArray = JSON.parse(product.color);
+              const enrichedColorArray = await Promise.all(
+                colorArray.map(async (colorItem) => {
+                  const colorRecord = await Color.findByPk(colorItem.color);
+                  const colorName = colorRecord ? colorRecord.name : null;
+
+                  const images = await Media.findAll({
+                    where: {
+                      id: { [Op.in]: colorItem.img || [] },
+                      status: "ACTIVE",
+                    },
+                  });
+
+                  const imageUrls = images.map((media) => {
+                    const base64 = Buffer.from(media.data, "base64").toString();
+                    return `data:${media.mimetype};base64,${base64}`;
+                  });
+
+                  return {
+                    color_id: colorItem.color,
+                    color_name: colorName,
+                    images: imageUrls,
+                  };
+                })
               );
+
+              product.color = enrichedColorArray;
+            } catch (err) {
+              console.warn("Không thể enrich product.color");
+              product.color = null;
             }
           }
         })

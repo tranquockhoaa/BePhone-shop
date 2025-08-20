@@ -65,6 +65,9 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
       order: [[sortField, sort]],
     });
 
+
+    
+
     const enrichedProducts = await Promise.all(
       products.rows.map(async (product) => {
         let colorData = [];

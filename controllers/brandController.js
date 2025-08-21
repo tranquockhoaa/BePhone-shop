@@ -2,6 +2,7 @@ const BrandService = require("./../service/brandService");
 const catchAsync = require("./../utils/catchAsync");
 const Brand = require("./../models/brand");
 const Product = require("./../models/product");
+const sequelize = require("../config/database");
 
 exports.createBrand = catchAsync(async (req, res, next) => {
   const newBrand = await BrandService.createBrand(req.body);
@@ -85,6 +86,23 @@ exports.getAllBrand = async (req, res) => {
   try {
     const brands = await Brand.findAll({
       order: [["sortOrder", order]],
+      include: [
+        {
+          model: Product,
+          as: "products", 
+          required: false, 
+          attributes: [],
+        },
+      ],
+      attributes: {
+        include: [
+          [
+            sequelize.fn("COUNT", sequelize.col("products.product_id")),
+            "productCount",
+          ],
+        ],
+      },
+      group: ["brands.brand_id"], 
     });
 
     if (!brands || brands.length === 0) {
@@ -93,6 +111,7 @@ exports.getAllBrand = async (req, res) => {
 
     return res.status(200).json(brands);
   } catch (err) {
+    console.error(err); 
     res.status(500).json({ error: "Lỗi khi lấy danh sách brand" });
   }
 };

@@ -4,6 +4,8 @@ const Order = require("../models/orders");
 const OrderItem = require("../models/orderItem");
 const ProductDetails = require("../models/productDetails");
 const Product = require("../models/product");
+const User = require("../models/user");
+
 
 
 
@@ -160,6 +162,19 @@ exports.getTopSellingProducts = async (req, res) => {
     }));
 
     return res.status(200).json({ topProducts: result });
+  } catch (error) {
+    console.error("Error fetching top selling products:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+exports.getTotalUser = async (req, res) => {
+  try {
+    
+    const users = await User.count({where: {role: "user"}})
+    
+    return res.status(200).json({ total: users });
   } catch (error) {
     console.error("Error fetching top selling products:", error);
     return res.status(500).json({ message: "Internal Server Error" });

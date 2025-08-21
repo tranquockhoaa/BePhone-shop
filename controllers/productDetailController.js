@@ -40,6 +40,10 @@ exports.getAllProductDetail = async (req, res) => {
           model: Memory,
           as: "memory",
         },
+        {
+          model: Color,
+          as: "color"
+        }
       ],
       limit,
       offset,

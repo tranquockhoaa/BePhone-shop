@@ -44,7 +44,7 @@ exports.updateBrand = catchAsync(async (req, res, next) => {
     const productIds = products.map(product => product.product_id);
 
     if (productIds.length > 0) {
-      const ProductDetails = require('../models/productDetail');
+      const ProductDetails = require('../models/productDetails');
 
       await ProductDetails.update(
         { status },
@@ -91,7 +91,22 @@ exports.getAllBrand = async (req, res) => {
           model: Product,
           as: "products", 
           required: false, 
-          attributes: [],
+          include: [
+            {
+              model: ProductDetails,
+              as: "product_details",
+              required: false, 
+              attributes: [], 
+            },
+          ],
+          attributes: {
+            include: [
+              [
+                sequelize.fn("COUNT", sequelize.col("product_details.product_detail_id")),
+                "productDetailCount",
+              ],
+            ],
+          },
         },
       ],
       attributes: {
@@ -102,7 +117,7 @@ exports.getAllBrand = async (req, res) => {
           ],
         ],
       },
-      group: ["brands.brand_id"], 
+      group: ["brands.brand_id", "products.product_id"], 
     });
 
     if (!brands || brands.length === 0) {
@@ -115,6 +130,7 @@ exports.getAllBrand = async (req, res) => {
     res.status(500).json({ error: "Lỗi khi lấy danh sách brand" });
   }
 };
+
 
 exports.getBrandByName = catchAsync(async (req, res, next) => {
   const brand = await BrandService.getBrandByName(req.query);

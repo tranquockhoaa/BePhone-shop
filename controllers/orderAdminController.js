@@ -17,6 +17,8 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
       limit = 10,
       status,
       search,
+      dateFrom,
+      dateTo,
       payment_method,
       sortBy = "createdAt",
       sortOrder = "ASC",
@@ -50,6 +52,16 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
         { address: { [Op.like]: `%${search}%` } },
         { code: { [Op.like]: `%${search}%` } },
       ];
+    }
+
+    if (dateFrom || dateTo) {
+      whereConditions.createdAt = {};
+      if (dateFrom) {
+        whereConditions.createdAt[Op.gte] = new Date(dateFrom); 
+      }
+      if (dateTo) {
+        whereConditions.createdAt[Op.lte] = new Date(dateTo); 
+      }
     }
 
     const { count, rows: rawOrders } = await Order.findAndCountAll({
@@ -169,6 +181,7 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
     });
   }
 });
+
 // 2. Xem chi tiết đơn hàng
 exports.getOrderDetails = catchAsync(async (req, res, next) => {
   try {

@@ -2,6 +2,9 @@ const BrandService = require("./../service/brandService");
 const catchAsync = require("./../utils/catchAsync");
 const Brand = require("./../models/brand");
 const Product = require("./../models/product");
+const ProductDetails = require("./../models/productDetails");
+const { Op, fn, col, literal, where, cast } = require("sequelize");
+
 const sequelize = require("../config/database");
 
 exports.createBrand = catchAsync(async (req, res, next) => {
@@ -31,27 +34,24 @@ exports.updateBrand = catchAsync(async (req, res, next) => {
     await brand.save();
 
     // Update products of this brand
-    await Product.update(
-      { status },
-      { where: { brand_id: id } }
-    );
+    await Product.update({ status }, { where: { brand_id: id } });
 
     const products = await Product.findAll({
       where: { brand_id: id },
-      attributes: ['product_id']
+      attributes: ["product_id"],
     });
 
-    const productIds = products.map(product => product.product_id);
+    const productIds = products.map((product) => product.product_id);
 
     if (productIds.length > 0) {
-      const ProductDetails = require('../models/productDetails');
+      const ProductDetails = require("../models/productDetails");
 
       await ProductDetails.update(
         { status },
         {
           where: {
-            product_id: productIds
-          }
+            product_id: productIds,
+          },
         }
       );
     }
@@ -70,8 +70,6 @@ exports.updateBrand = catchAsync(async (req, res, next) => {
   }
 });
 
-
-
 exports.getBrandByPk = catchAsync(async (req, res, next) => {
   const brand = await BrandService.getBrandByPk(req.params.id);
   res.status(200).json({
@@ -89,24 +87,9 @@ exports.getAllBrand = async (req, res) => {
       include: [
         {
           model: Product,
-          as: "products", 
-          required: false, 
-          include: [
-            {
-              model: ProductDetails,
-              as: "product_details",
-              required: false, 
-              attributes: [], 
-            },
-          ],
-          attributes: {
-            include: [
-              [
-                sequelize.fn("COUNT", sequelize.col("product_details.product_detail_id")),
-                "productDetailCount",
-              ],
-            ],
-          },
+          as: "products",
+          required: false,
+          attributes: [],
         },
       ],
       attributes: {
@@ -117,20 +100,58 @@ exports.getAllBrand = async (req, res) => {
           ],
         ],
       },
-      group: ["brands.brand_id", "products.product_id"], 
+      group: ["brands.brand_id"],
     });
+
+    const updatedBrands = await Promise.all(
+      brands.map(async (item) => {
+        const brandProducts = await Product.findAll({
+          where: { brand_id: item.brand_id }, 
+          attributes: {
+            include: [
+              [
+                fn("COALESCE", fn("SUM", col("product_details.quantity")), 0),
+                "totalQuantity",
+              ],
+            ],
+          },
+          include: [
+            {
+              model: ProductDetails,
+              as: "product_details",
+              attributes: [],
+            },
+          ],
+          group: ["products.product_id"], 
+        });
+
+        const totalBrandQuantity = brandProducts.reduce((total, product) => {
+          return total + parseInt(product.dataValues.totalQuantity, 10);
+        }, 0);
+
+        return {
+          brand_id: item.brand_id,
+          name: item.name,
+          infomation: item.infomation,
+          sortOrder: item.sortOrder,
+          icon: item.icon,
+          status: item.status,
+          totalQuantity: totalBrandQuantity,
+         
+        };
+      })
+    );
 
     if (!brands || brands.length === 0) {
       return res.status(404).json({ error: "Không tìm thấy brand nào" });
     }
 
-    return res.status(200).json(brands);
+    return res.status(200).json(updatedBrands);
   } catch (err) {
-    console.error(err); 
+    console.error(err);
     res.status(500).json({ error: "Lỗi khi lấy danh sách brand" });
   }
 };
-
 
 exports.getBrandByName = catchAsync(async (req, res, next) => {
   const brand = await BrandService.getBrandByName(req.query);

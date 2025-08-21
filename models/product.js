@@ -49,4 +49,5 @@ Product.belongsTo(Brand, {
 });
 
 
+
 module.exports = Product;

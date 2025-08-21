@@ -58,6 +58,7 @@ exports.createPayment = async (req, res) => {
       full_name,
       phone_number,
       address,
+      email,
       total_amount,
       payment_method,
     } = req.body;
@@ -76,7 +77,7 @@ exports.createPayment = async (req, res) => {
         code: txn,
         full_name,
         phone_number,
-        email: user.email,
+        email: email,
         address,
         total_amount,
         payment_method,

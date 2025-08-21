@@ -169,6 +169,10 @@ exports.getOrdersList = catchAsync(async (req, res, next) => {
     });
   }
 });
+
+
+
+
 // 2. Xem chi tiết đơn hàng
 exports.getOrderDetails = catchAsync(async (req, res, next) => {
   try {
@@ -222,38 +226,6 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
         orderData.order_items.map(async (item) => {
           const detail = item.product_details;
           const product = detail?.product;
-
-          if (detail?.image) {
-            try {
-              const parsedImage = JSON.parse(detail.image);
-              const allImageIds = Object.values(parsedImage).flat();
-
-              const images = await Media.findAll({
-                where: {
-                  id: allImageIds,
-                  status: "ACTIVE",
-                },
-              });
-
-              const imageMap = {};
-              images.forEach((img) => {
-                const base64 = img.data.toString("base64");
-                const dataUrl = `data:${img.mimetype};base64,${base64}`;
-                imageMap[img.id] = dataUrl;
-              });
-
-              for (const color in parsedImage) {
-                parsedImage[color] = parsedImage[color].map(
-                  (id) => imageMap[id] || null
-                );
-              }
-
-              detail.image = parsedImage;
-            } catch (err) {
-              console.warn("Không thể parse image:", detail.image);
-              detail.image = null;
-            }
-          }
 
           // Parse specifications
           if (detail?.specifications) {

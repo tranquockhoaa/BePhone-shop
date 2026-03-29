@@ -27,7 +27,7 @@ const deleteKeyRedis = catchAsync(async (partten) => {
     await Promise.all(
       keys.map((e) => {
         redisClient.del(e);
-      })
+      }),
     );
 });
 // sesssion token user id
@@ -113,7 +113,6 @@ exports.protect = catchAsync(async (req, res, next) => {
   if (!token) {
     return next(new AppError("you are not login!"));
   }
-
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
   const keyRedis = `${decoded.id}:jwt:${token}`;
   const keyRedisIsValid = () => {
@@ -123,10 +122,11 @@ exports.protect = catchAsync(async (req, res, next) => {
   const currentUser = await User.findByPk(decoded.id);
   if (!currentUser) {
     return next(
-      new AppError("The user belonging to this token does no longer exit")
+      new AppError("The user belonging to this token does no longer exit"),
     );
   }
   req.userId = currentUser.user_id;
+  req.user = currentUser; // cho chắc chắn, để controller dễ dùng
   next();
 });
 
@@ -141,7 +141,7 @@ exports.prevent = catchAsync(async (req, res, next) => {
   const currentUser = await User.findByPk(decoded.id);
   if (!currentUser) {
     return next(
-      new AppError("The user belonging to this token does no longer exit")
+      new AppError("The user belonging to this token does no longer exit"),
     );
   }
   req.user = currentUser;
@@ -159,7 +159,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
   const resetURL = `${req.protocol}://${req.get(
-    "host"
+    "host",
   )}/api/v1/user/resetPassword/${resetToken}`;
 
   await sendEmail({
@@ -314,7 +314,7 @@ exports.restrictTo = (...roles) => {
       .then((user) => {
         if (!user || !roles.includes(user.role)) {
           return next(
-            new AppError("Bạn không có quyền truy cập chức năng này!", 403)
+            new AppError("Bạn không có quyền truy cập chức năng này!", 403),
           );
         }
         next();
@@ -344,7 +344,7 @@ exports.restrictTo = (...roles) => {
       .then((user) => {
         if (!user || !roles.includes(user.role)) {
           return next(
-            new AppError("Bạn không có quyền truy cập chức năng này!", 403)
+            new AppError("Bạn không có quyền truy cập chức năng này!", 403),
           );
         }
         next();

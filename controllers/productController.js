@@ -319,3 +319,13 @@ exports.searchProduct = catchAsync(async (req, res, next) => {
     total: result.total,
   });
 });
+
+exports.recommendProducts = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+  const { userId } = req.query;
+  const result = await ProductService.recommendProducts(productId, userId);
+  res.status(200).json({
+    status: "Done",
+    recommendations: result.recommendations,
+  });
+});

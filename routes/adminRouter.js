@@ -10,6 +10,16 @@ router.use(authController.protect, authController.restrictTo("admin"));
 
 // Danh sách sản phẩm
 router.get("/products", adminController.getAllProducts);
+router.get("/products/top-selling", adminController.getTopSellingProducts);
+router.get("/products/low-stock", adminController.getLowStockProducts);
+router.get(
+  "/products-with-total-quantity",
+  adminController.getAllProductsWithTotalQuantity,
+);
+router.get(
+  "/products/stock-sales-report",
+  adminController.getProductsStockSoldReport,
+);
 router.get("/products/:id", adminController.getProductById);
 router.post("/products/create", adminController.createProduct);
 router.put("/products/:id", adminController.updateProduct);
@@ -29,7 +39,7 @@ router.get("/orders", adminController.getAllOrders);
 
 // Danh sách người dùng
 router.get("/users", adminController.getAllUsers);
-router.delete("/users/:id", adminController.deleteUser)
+router.delete("/users/:id", adminController.deleteUser);
 
 // Tổng doanh thu
 router.get("/orders/total-revenue", adminController.getTotalRevenue);
@@ -53,7 +63,11 @@ router.get("/product-details", adminController.getAllProductDetails);
 
 router.get(
   "/products-with-total-quantity",
-  adminController.getAllProductsWithTotalQuantity
+  adminController.getAllProductsWithTotalQuantity,
+);
+router.get(
+  "/products/stock-sales-report",
+  adminController.getProductsStockSoldReport,
 );
 
 router.put("/products/:id/name", adminController.updateProductName);

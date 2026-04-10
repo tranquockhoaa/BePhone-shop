@@ -7,7 +7,7 @@ const Memory = require("../models/memory");
 const Brand = require("../models/brand");
 const Media = require("../models/media");
 
-const { Op, fn, col, literal , where, cast} = require("sequelize");
+const { Op, fn, col, literal, where, cast } = require("sequelize");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 
@@ -125,7 +125,7 @@ exports.getAllProducts = catchAsync(async (req, res, next) => {
           createdAt: product.createdAt,
           updatedAt: product.updatedAt,
         };
-      })
+      }),
     );
     const totalCount = await Product.count({ where: whereClause });
 
@@ -339,7 +339,14 @@ exports.getAllOrders = catchAsync(async (req, res, next) => {
 // GET /api/v1/admin/users
 exports.getAllUsers = catchAsync(async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search, gender, birth_date, role } = req.query;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      gender,
+      birth_date,
+      role,
+    } = req.query;
 
     const offset = (page - 1) * limit;
 
@@ -365,7 +372,7 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
       whereClause.birth_date = birth_date;
     }
 
-     if (role) {
+    if (role) {
       whereClause.role = role;
     }
     const { count, rows } = await User.findAndCountAll({
@@ -468,7 +475,7 @@ exports.getTopSellingProducts = catchAsync(async (req, res, next) => {
     ORDER BY totalSold DESC
     LIMIT 5
   `,
-    { type: Order.sequelize.QueryTypes.SELECT }
+    { type: Order.sequelize.QueryTypes.SELECT },
   );
   res.status(200).json({ status: "success", topSelling: result });
 });
@@ -611,6 +618,59 @@ exports.getAllProductsWithTotalQuantity = catchAsync(async (req, res, next) => {
   });
 
   res.status(200).json({ status: "success", total: products.length, products });
+});
+
+exports.getProductsStockSoldReport = catchAsync(async (req, res, next) => {
+  const result = await Product.sequelize.query(
+    `
+    SELECT
+      p.product_id,
+      p.code AS productcode,
+      p.name AS productname,
+      b.name AS brandname,
+      pd.product_detail_id AS productdetailid,
+      pd.sku,
+      pd.price,
+      pd.quantity AS totalremaining,
+      c.name AS colorname,
+      m.ram_size AS ramsize,
+      m.storage_size AS storagesize,
+      COALESCE(SUM(oi.quantity), 0) AS totalsold
+    FROM product_details pd
+    JOIN products p ON pd.product_id = p.product_id
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN colors c ON pd.color_id = c.color_id
+    LEFT JOIN memories m ON pd.memory_id = m.memory_id
+    LEFT JOIN order_items oi ON oi.product_detail_id = pd.product_detail_id
+    LEFT JOIN orders o ON o.order_id = oi.order_id AND o.status = 'DELIVERED'
+    GROUP BY
+      p.product_id,
+      p.code,
+      p.name,
+      b.name,
+      pd.product_detail_id,
+      pd.sku,
+      pd.price,
+      pd.quantity,
+      c.name,
+      m.ram_size,
+      m.storage_size
+    ORDER BY p.name ASC, pd.product_detail_id ASC;
+  `,
+    { type: Product.sequelize.QueryTypes.SELECT },
+  );
+
+  const variants = result.map((item) => ({
+    ...item,
+    totalsold: parseInt(item.totalsold, 10) || 0,
+    totalremaining: parseInt(item.totalremaining, 10) || 0,
+  }));
+
+  res.status(200).json({
+    status: "success",
+    total: variants.length,
+    variants,
+  });
 });
 
 exports.updateProductName = catchAsync(async (req, res, next) => {

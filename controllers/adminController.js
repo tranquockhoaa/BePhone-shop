@@ -230,11 +230,15 @@ exports.createProduct = catchAsync(async (req, res, next) => {
       });
     }
     const colorString = color ? JSON.stringify(color) : null;
+    const descriptionString =
+      description && typeof description === "object"
+        ? JSON.stringify(description)
+        : description;
 
     const newProduct = await Product.create({
       name,
       code,
-      description,
+      description: descriptionString,
       brand_id,
       sku,
       color: colorString,
@@ -278,9 +282,14 @@ exports.updateProduct = catchAsync(async (req, res, next) => {
         message: "Sản phẩm đã tồn tại với SKU này",
       });
     }
+    const descriptionString =
+      description && typeof description === "object"
+        ? JSON.stringify(description)
+        : description;
+
     product.name = name;
     product.code = code;
-    product.description = description;
+    product.description = descriptionString;
     product.brand_id = brand_id;
     product.sku = sku;
     product.status = status || product.status;

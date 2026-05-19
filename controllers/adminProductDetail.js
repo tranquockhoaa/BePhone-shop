@@ -41,13 +41,18 @@ exports.createProductDetail = async (req, res) => {
       });
     }
 
+    const formattedSpecifications =
+      specifications && typeof specifications === "object"
+        ? JSON.stringify(specifications)
+        : specifications;
+
     const newProductDetail = await ProductDetail.create({
       price,
       quantity,
       discount,
       sku,
       color_id,
-      specifications,
+      specifications: formattedSpecifications,
       product_id: product_id,
       memory_id: memory.memory_id,
       status: "ACTIVE",
@@ -134,7 +139,7 @@ exports.getAllProductDetail = async (req, res) => {
         if (productDetail.specifications) {
           try {
             productDetail.specifications = JSON.parse(
-              productDetail.specifications
+              productDetail.specifications,
             );
           } catch (err) {
             productDetail.specifications = null;
@@ -170,7 +175,7 @@ exports.getAllProductDetail = async (req, res) => {
                   color_name: colorName,
                   images: imageLinks,
                 };
-              })
+              }),
             );
 
             product.color = enrichedColorArray;
@@ -180,7 +185,7 @@ exports.getAllProductDetail = async (req, res) => {
         }
 
         return productDetail;
-      })
+      }),
     );
 
     return res.status(200).json({
@@ -264,7 +269,7 @@ exports.getProductDetailById = async (req, res) => {
               color_name: colorName,
               images: imageLinks,
             };
-          })
+          }),
         );
 
         product.color = enrichedColorArray;

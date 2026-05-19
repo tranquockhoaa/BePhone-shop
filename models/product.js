@@ -17,6 +17,15 @@ const Product = sequelize.define(
     code: { type: DataTypes.TEXT },
     description: {
       type: DataTypes.TEXT,
+      get() {
+        const raw = this.getDataValue("description");
+        if (!raw) return raw;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return raw;
+        }
+      },
     },
     brand_id: {
       type: DataTypes.INTEGER,
@@ -39,15 +48,12 @@ const Product = sequelize.define(
   },
   {
     timestamps: true,
-  }
+  },
 );
-
 
 Product.belongsTo(Brand, {
   foreignKey: "brand_id",
   as: "brand",
 });
-
-
 
 module.exports = Product;

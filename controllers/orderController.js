@@ -84,7 +84,7 @@ exports.createPayment = async (req, res) => {
         user_id: user.user_id,
         status: "PENDING",
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     for (const item of products) {
@@ -96,7 +96,7 @@ exports.createPayment = async (req, res) => {
           unit_price: item.unit_price,
           total_price: item.unit_price * item.quantity,
         },
-        { transaction: t }
+        { transaction: t },
       );
     }
 
@@ -159,8 +159,8 @@ exports.createPayment = async (req, res) => {
 exports.checkPayment = async (req, res) => {
   try {
     const vnpay = new VNPay({
-      tmnCode: "2BXC2ONJ",
-      secureSecret: "1D2V0ZMGB3SFFGHBC2DWI065E1W1POIV",
+      tmnCode: "D17OEA4G",
+      secureSecret: "6AK47SDZSGOI0UHZTQXHDAHID05C3067",
       vnpayHost: "htttps://sandbox.vnpayment.vn",
       testMode: true,
       hashAlgorithm: "SHA512",
@@ -220,7 +220,7 @@ exports.checkPayment = async (req, res) => {
             await productDetail.save();
           } else {
             console.log(
-              `Không tìm thấy sản phẩm với mã ${item.product_detail_id}`
+              `Không tìm thấy sản phẩm với mã ${item.product_detail_id}`,
             );
           }
         }
@@ -380,7 +380,7 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
             if (productDetail?.specifications) {
               try {
                 productDetail.specifications = JSON.parse(
-                  productDetail.specifications
+                  productDetail.specifications,
                 );
               } catch (err) {
                 productDetail.specifications = null;
@@ -417,7 +417,7 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
                       color_name: colorName,
                       images: imageLinks,
                     };
-                  })
+                  }),
                 );
 
                 product.color = enrichedColorArray;
@@ -427,13 +427,13 @@ exports.getAllOrder = catchAsync(async (req, res, next) => {
             }
 
             return item;
-          })
+          }),
         );
 
         order.order_items = enrichedItems;
 
         return order;
-      })
+      }),
     );
 
     res.status(200).json({
@@ -535,7 +535,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
                     color_name: colorName,
                     images: imageLinks,
                   };
-                })
+                }),
               );
 
               product.color = enrichedColorArray;
@@ -544,7 +544,7 @@ exports.getOrderDetails = catchAsync(async (req, res, next) => {
               product.color = null;
             }
           }
-        })
+        }),
       );
     }
 
